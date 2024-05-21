@@ -1,0 +1,12 @@
+hidden = [
+    '.config',
+]
+modules = [
+'go-1.21:v8-20240329-787bc7d'
+]
+run = 'just run'
+
+[nix]
+channel = 'stable-23_11'
+
+

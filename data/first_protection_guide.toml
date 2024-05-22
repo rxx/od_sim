@@ -40,9 +40,6 @@ unit4 = 525 # cavarly
 [draftrate]
 0 = 90
 
-# Release units, cause we don't need them right now
-[release.0]
-unit2 = -150
 
 # Rezone 60 land
 [rezone.0]
@@ -115,4 +112,5 @@ mining = [28, 40, 52, 64]
 61 = 525
 
 [unit2]
+0 = -150
 64 = 540

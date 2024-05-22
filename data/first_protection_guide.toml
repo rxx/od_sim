@@ -41,31 +41,22 @@ unit4 = 525 # cavarly
 0 = 90
 
 # Release units, cause we don't need them right now
-[release.unit2]
-0 = -150
+[release.0]
+unit2 = -150
 
 # Rezone 60 land
-[rezone.plain]
-0 = -10
+[rezone.0]
+plain = -10
+forest = -20
+water = -10
+cavern = -20
+hill = 35
+swamp = 25
 
-[rezone.forest]
-0 = -20
-
-[rezone.water]
-0 = -10
-
-[rezone.cavern]
-0 = -20
-
-[rezone.hill]
-0 = 35
-
-[rezone.swamp]
-0 = 25
-
+[bonus]
 # Better take at the max of peaseants (end of a day)
-platinum_bonus = [24, 48, 52]
-land_bonus = [24, 48, 49]
+platinum = [24, 48, 52]
+land = [24, 48, 49]
 
 [bank.0]
 gems = -10_000
@@ -119,7 +110,9 @@ mining = [28, 40, 52, 64]
 
 [unit3]
 61 = 420
-unit4 = 525
+
+[unit4]
+61 = 525
 
 [unit2]
 64 = 540

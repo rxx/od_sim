@@ -9,3 +9,34 @@ Mana = 1000
 Others = 30
 Draftees = 30
 
+[buildings.plain]
+ho = "Home"
+al = "Alchemy"
+fa = "Farm"
+sm = "Smithy"
+ma = "Masonry"
+
+[buildings.cavern]
+dm = "Diamond Mine"
+sc = "School"
+
+[buildings.mountain]
+om = "Ore Mine"
+gn = "Gryphon Nest"
+
+[buildings.hill]
+fac = "Factory"
+gt = "Guard Tower"
+shr = "Shrine"
+ba = "Barracks"
+
+[buildings.swamp]
+tow = "Tower"
+tem = "Temple"
+wg = "Wizard Guild"
+
+[buildings.forest]
+ly = "Lumberyard"
+
+[buildings.water]
+do = "Dock"

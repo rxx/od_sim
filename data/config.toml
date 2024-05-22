@@ -1,0 +1,11 @@
+# Extra resources per day late signing up
+[late_signup]
+Peasants = 100
+Platinum = 5000
+Food = 1500
+Lumber = 2500
+Ore = 2500
+Mana = 1000
+Others = 30
+Draftees = 30
+

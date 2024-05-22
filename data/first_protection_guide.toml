@@ -1,0 +1,63 @@
+# Keys
+# production
+# construction
+# explore
+# rezone
+# military
+# magic
+# techs
+# imps
+
+[meta]
+title = "First Protection Guide"
+round = "Round 39.5 - Undying Test"
+name = "Masterius"
+date = 2024-05-22
+
+# Initial values for build
+[setup]
+race = "Human"
+#Start of the round
+# TimeZone
+# Starting days late
+
+
+# Values to check final build to be sure everything is correct
+[constructed]
+[trained]
+[explored]
+
+[hours.0.units]
+draftrate = 90
+init2 = -150
+
+# Rezone 60 land
+[hours.0.rezone]
+plain = -10
+forest = -20
+water = -10
+cavern = -20
+hill = 35
+swamp = 25
+
+[hours.0.construct]
+factory = 55
+tower = 15
+temple = 30
+
+# Factories reduces construction cost (max 10%), so 55 factories works up to 550 land.
+
+# Towers for mana.
+# Temples for population growth.
+
+[explore.plain]
+0 = 21
+1 = 4
+2 = 4
+
+# We need exactly 299 land (with 20 bonus) to have the least cost of draftees
+# |4|299 land|
+# |5|419 land|
+# |6|632 land|
+
+

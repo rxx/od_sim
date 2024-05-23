@@ -6,8 +6,11 @@ import (
 	"os"
 )
 
+var debugEnabled bool
+
 func main() {
 	generateLogCmd := flag.NewFlagSet("generate_log", flag.ExitOnError)
+	generateLogCmd.BoolVar(&debugEnabled, "debug", false, "Enable debug logging")
 	sheetFilePath := generateLogCmd.String("sim", "", "Path to the sim file")
 
 	if len(os.Args) < 2 {

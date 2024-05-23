@@ -11,8 +11,6 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-const DEBUG = true
-
 const (
 	Overview     = "Overview"
 	Population   = "Population"
@@ -31,7 +29,7 @@ const (
 )
 
 func debugLog(values ...interface{}) {
-	if !DEBUG {
+	if !debugEnabled {
 		return
 	}
 
@@ -45,8 +43,12 @@ func debugLog(values ...interface{}) {
 	fmt.Println("--- ^_^ ---")
 }
 
+var sim *excelize.File
+
 func executeGenerateLogCmd(path string) {
-	sim, err := excelize.OpenFile(path)
+	var err error
+
+	sim, err = excelize.OpenFile(path)
 	if err != nil {
 		fmt.Println("Error on opening file %w", err)
 		return
@@ -55,7 +57,7 @@ func executeGenerateLogCmd(path string) {
 	defer sim.Close()
 
 	for hr := 0; hr <= LastHour; hr++ {
-		action, err := generateWithHour(sim, hr)
+		action, err := generateWithHour(hr)
 		if err != nil {
 			fmt.Println("Error on generating action", err)
 			continue
@@ -65,7 +67,7 @@ func executeGenerateLogCmd(path string) {
 	}
 }
 
-func currentHour(sim *excelize.File) (int, error) {
+func currentHour() (int, error) {
 	hourStr, err := sim.GetCellValue(Overview, "E17")
 	if err != nil {
 		return 0, fmt.Errorf("read from sim: %w", err)
@@ -86,20 +88,27 @@ func currentHour(sim *excelize.File) (int, error) {
 	// SimHour hournum, "msg"
 }
 
-func generateWithHour(sim *excelize.File, hr int) (string, error) {
-	var result strings.Builder
+func generateWithHour(hr int) (string, error) {
+	var sb strings.Builder
 
 	// Starting at row 4 because of extra added row (due to uniform table headers)
-	// simhr := hr + SimHr
+	simhr := hr + SimHr
 
-	timeline, err := generateTimeline(sim, hr)
+	timeline, err := generateTimeline(hr)
 	if err != nil {
 		return "", err
 	}
+	sb.WriteString(timeline)
+	sb.WriteString("\n")
 
-	result.WriteString(timeline)
+	draftrate, err := setDraftRate(simhr)
+	if err != nil {
+		return "", err
+	}
+	sb.WriteString(draftrate)
+	sb.WriteString("\n")
 
-	return result.String(), nil
+	return sb.String(), nil
 }
 
 // TODO: Outputs
@@ -107,7 +116,7 @@ func generateWithHour(sim *excelize.File, hr int) (string, error) {
 // But seems correct ouput in next
 // ====== Protection Hour: 1  ( Local Time: 6:00:00 PM 5/17/2024 )  ( Domtime: 12:00:00 AM 5/18/2024 ) ======
 // Why 5/17?
-func generateTimeline(sim *excelize.File, hr int) (string, error) {
+func generateTimeline(hr int) (string, error) {
 	localTimeCell := fmt.Sprintf("BY%d", hr+SimHr)
 	domTimeCell := fmt.Sprintf("BZ%d", hr+SimHr)
 
@@ -171,4 +180,33 @@ func generateTimeline(sim *excelize.File, hr int) (string, error) {
 	timeline.WriteString(" ) ======")
 
 	return timeline.String(), nil
+}
+
+func setDraftRate(simhr int) (string, error) {
+	currentRateCell := fmt.Sprintf("Y%d", simhr)
+	previousRateCell := fmt.Sprintf("Z%d", simhr-1)
+
+	currentRateStr, err := sim.GetCellValue(Military, currentRateCell)
+	if err != nil {
+		return "", fmt.Errorf("error reading current draftrate: %w", err)
+	}
+
+	previousRateStr, err := sim.GetCellValue(Military, previousRateCell)
+	if err != nil {
+		return "", fmt.Errorf("error reading previous draftrate: %w", err)
+	}
+
+	debugLog("CurrentDraftrate", currentRateStr, "PreviousDraftrate", previousRateStr)
+
+	var buf strings.Builder
+
+	if currentRateStr == "" || currentRateStr == previousRateStr {
+		return "", nil
+	}
+
+	buf.WriteString("Draftrate changed to ")
+	buf.WriteString(currentRateStr)
+	buf.WriteString(".")
+
+	return buf.String(), nil
 }

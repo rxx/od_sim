@@ -22,5 +22,13 @@ func (s *SimMock) Close() error {
 	return nil
 }
 
-func TestSimHour(t *testing.T) {
+func newMockGameLog(sim *SimMock, actions ...ActionFunc) *GameLogCmd {
+	return &GameLogCmd{
+		currentHour: 0,
+    sim: sim,
+    actions: actions
+	}
+}
+
+func TestTickAction(t *testing.T) {
 }

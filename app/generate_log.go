@@ -82,9 +82,15 @@ func (c *GameLogCmd) Execute() {
 
 	// for hr := 0; hr <= LastHour; hr++ {
 	// c.setCurrentHour(hr)
+  // }
 	c.setCurrentHour(0)
+  c.executeActions()
 
-	for _, actionFunc := range c.actions {
+	fmt.Println(c.output.String())
+}
+
+func (c *GameLogCmd) executeActions() {
+  for _, actionFunc := range c.actions {
 		result, err := actionFunc()
 		if err != nil {
 			c.output.WriteString(fmt.Sprintf("Error on executing action: %v", err))
@@ -101,8 +107,6 @@ func (c *GameLogCmd) Execute() {
 			c.output.WriteString("\n")
 		}
 	}
-
-	fmt.Println(c.output.String())
 }
 
 func (c *GameLogCmd) tickAction() (string, error) {

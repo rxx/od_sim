@@ -78,7 +78,7 @@ func (c *GameLogCmd) Execute() {
 	for _, actionFunc := range c.actions {
 		result, err := actionFunc()
 		if err != nil {
-			c.output.WriteString(fmt.Sprintf("Error on executing action: %w", err))
+			c.output.WriteString(fmt.Sprintf("Error on executing action: %v", err))
 			c.output.WriteString("\n")
 
 			if debugEnabled {
@@ -157,11 +157,11 @@ func (c *GameLogCmd) tickAction() (string, error) {
 	var timeline strings.Builder
 	timeline.WriteString("====== Protection Hour: ")
 	timeline.WriteString(fmt.Sprintf("%d", c.currentHour+1))
-	timeline.WriteString("  ( Local Time: ")
+	timeline.WriteString(" ( Local Time: ")
 	timeline.WriteString(localTimeLong)
 	timeline.WriteString(" ")
 	timeline.WriteString(localTimeShort)
-	timeline.WriteString(" )  ( Domtime: ")
+	timeline.WriteString(" ) ( Domtime: ")
 	timeline.WriteString(domTimeLong)
 	timeline.WriteString(" ")
 	timeline.WriteString(domTimeShort)
@@ -194,7 +194,6 @@ func (c *GameLogCmd) draftRateAction() (string, error) {
 
 	buf.WriteString("Draftrate changed to ")
 	buf.WriteString(currentRateStr)
-	buf.WriteString(".")
 
 	return buf.String(), nil
 }
@@ -239,14 +238,14 @@ func (c *GameLogCmd) releaseUnitsAction() (string, error) {
 	}
 
 	if released {
-		sb.WriteString(".\n")
+		sb.WriteString("\n")
 	} else {
 		sb.Reset()
 	}
 
 	// 3. Check for Draftees
 	if draftees > 0 {
-		sb.WriteString(fmt.Sprintf("You successfully released %d draftees into the peasantry.\n", draftees))
+		sb.WriteString(fmt.Sprintf("You successfully released %d draftees into the peasantry\n", draftees))
 	}
 
 	return sb.String(), nil

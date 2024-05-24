@@ -28,13 +28,19 @@ const (
 
 type ActionFunc func() (string, error)
 
+type Sim interface {
+	GetCellValue(sheet, cell string, opts ...excelize.Options) (string, error)
+	Close() error
+}
+
 type GameLogCmd struct {
 	currentHour int
 	simHour     int
 	simPath     string
-	sim         *excelize.File
-	output      strings.Builder
-	actions     []ActionFunc
+	sim         Sim
+	// sim     *excelize.File
+	output  strings.Builder
+	actions []ActionFunc
 }
 
 func NewGameLog(path string) *GameLogCmd {
@@ -96,11 +102,6 @@ func (c *GameLogCmd) Execute() {
 	fmt.Println(c.output.String())
 }
 
-// TODO: Outputs
-// ====== Protection Hour: 1  ( Local Time: 6:00:00 PM 5/18/2024 )  ( Domtime: 12:00:00 AM 5/18/2024 ) ======
-// But seems correct ouput in next
-// ====== Protection Hour: 1  ( Local Time: 6:00:00 PM 5/17/2024 )  ( Domtime: 12:00:00 AM 5/18/2024 ) ======
-// Why 5/17?
 func (c *GameLogCmd) tickAction() (string, error) {
 	localTimeCell := fmt.Sprintf("BY%d", c.simHour)
 	domTimeCell := fmt.Sprintf("BZ%d", c.simHour)

@@ -49,6 +49,7 @@ func NewGameLog(path string) *GameLogCmd {
 		currentHour: 0,
 	}
 	gameLogCmd.initActions()
+	gameLogCmd.initSim()
 
 	return gameLogCmd
 }
@@ -66,7 +67,7 @@ func (c *GameLogCmd) setCurrentHour(hr int) {
 	c.simHour = hr + 4
 }
 
-func (c *GameLogCmd) Execute() {
+func (c *GameLogCmd) initSim() {
 	var err error
 
 	c.sim, err = excelize.OpenFile(c.simPath)
@@ -74,7 +75,9 @@ func (c *GameLogCmd) Execute() {
 		fmt.Println("Error on opening file %w", err)
 		return
 	}
+}
 
+func (c *GameLogCmd) Execute() {
 	defer c.sim.Close()
 
 	// for hr := 0; hr <= LastHour; hr++ {

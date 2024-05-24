@@ -2,8 +2,7 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
-	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -24,112 +23,77 @@ const (
 	Imps         = "Imps"
 	Constants    = "Constants"
 	Races        = "Races"
-	LastHour     = 0 // 83
-	SimHr        = 4
+	LastHour     = 72
 )
 
-func debugLog(values ...interface{}) {
-	if !debugEnabled {
-		return
-	}
+type ActionFunc func() (string, error)
 
-	formattedValues := make([]interface{}, len(values))
-	for i, value := range values {
-		switch v := value.(type) {
-		case string:
-			if strings.TrimSpace(v) == "" {
-				formattedValues[i] = "[empty]"
-			} else {
-				formattedValues[i] = v
-			}
-		case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64:
-			if v == 0 { // Check for zero value of numeric types
-				formattedValues[i] = "[empty]"
-			} else {
-				formattedValues[i] = v
-			}
-		default:
-			formattedValues[i] = value // For other types, keep as is
-		}
-	}
-
-	pc, file, line, _ := runtime.Caller(1)
-	funcName := runtime.FuncForPC(pc).Name()
-
-	fmt.Printf("--- DEBUG on [%s:%s:%d] ---\n", filepath.Base(file), funcName, line)
-	fmt.Println(formattedValues...)
-	fmt.Println("--- ^_^ ---")
+type GameLogCmd struct {
+	currentHour int
+	simHour     int
+	simPath     string
+	sim         *excelize.File
+	output      strings.Builder
+	actions     []ActionFunc
 }
 
-var sim *excelize.File
+func NewGameLog(path string) *GameLogCmd {
+	gameLogCmd := &GameLogCmd{
+		simPath:     path,
+		currentHour: 0,
+	}
+	gameLogCmd.initActions()
 
-func executeGenerateLogCmd(path string) {
+	return gameLogCmd
+}
+
+func (c *GameLogCmd) initActions() {
+	c.actions = append(c.actions,
+		c.tickAction,
+		c.draftRateAction,
+		c.releaseUnitsAction)
+}
+
+// Starting at row 4 because of extra added row (due to uniform table headers)
+func (c *GameLogCmd) setCurrentHour(hr int) {
+	c.currentHour = hr
+	c.simHour = hr + 4
+}
+
+func (c *GameLogCmd) Execute() {
 	var err error
 
-	sim, err = excelize.OpenFile(path)
+	c.sim, err = excelize.OpenFile(c.simPath)
 	if err != nil {
 		fmt.Println("Error on opening file %w", err)
 		return
 	}
 
-	defer sim.Close()
+	defer c.sim.Close()
 
-	for hr := 0; hr <= LastHour; hr++ {
-		action, err := generateWithHour(hr)
+	// for hr := 0; hr <= LastHour; hr++ {
+	// c.setCurrentHour(hr)
+	c.setCurrentHour(0)
+
+	for _, actionFunc := range c.actions {
+		result, err := actionFunc()
 		if err != nil {
-			fmt.Println("Error on generating action", err)
-			continue
+			c.output.WriteString(fmt.Sprintf("Error on executing action: %w", err))
+			c.output.WriteString("\n")
+
+			if debugEnabled {
+				debug.PrintStack()
+			}
+			break
 		}
 
-		fmt.Printf("Action on hour %v\n\n%v", hr+1, action)
-	}
-}
-
-func currentHour() (int, error) {
-	hourStr, err := sim.GetCellValue(Overview, "E17")
-	if err != nil {
-		return 0, fmt.Errorf("read from sim: %w", err)
+		if result != "" {
+			c.output.WriteString(result)
+			c.output.WriteString("\n")
+		}
 	}
 
-	hour, err := strconv.Atoi(hourStr)
-	if err != nil {
-		return 0, fmt.Errorf("converting current hour: %w", err)
-	}
-
-	hour -= 1
-	if hour < 0 {
-		hour = 0
-	}
-
-	return hour, nil
-
-	// SimHour hournum, "msg"
-}
-
-func generateWithHour(hr int) (string, error) {
-	var sb strings.Builder
-
-	// Starting at row 4 because of extra added row (due to uniform table headers)
-	simhr := hr + SimHr
-
-	timeline, err := generateTimeline(hr)
-	if err != nil {
-		return "", err
-	}
-	sb.WriteString(timeline)
-	sb.WriteString("\n")
-
-	draftrate, err := setDraftRate(simhr)
-	if err != nil {
-		return "", err
-	}
-	sb.WriteString(draftrate)
-	sb.WriteString("\n")
-
-	sb.WriteString(releaseUnits(simhr))
-	sb.WriteString("\n")
-
-	return sb.String(), nil
+	fmt.Println(c.output.String())
 }
 
 // TODO: Outputs
@@ -137,21 +101,21 @@ func generateWithHour(hr int) (string, error) {
 // But seems correct ouput in next
 // ====== Protection Hour: 1  ( Local Time: 6:00:00 PM 5/17/2024 )  ( Domtime: 12:00:00 AM 5/18/2024 ) ======
 // Why 5/17?
-func generateTimeline(hr int) (string, error) {
-	localTimeCell := fmt.Sprintf("BY%d", hr+SimHr)
-	domTimeCell := fmt.Sprintf("BZ%d", hr+SimHr)
+func (c *GameLogCmd) tickAction() (string, error) {
+	localTimeCell := fmt.Sprintf("BY%d", c.simHour)
+	domTimeCell := fmt.Sprintf("BZ%d", c.simHour)
 
-	localTimeValue, err := sim.GetCellValue(Imps, localTimeCell)
+	localTimeValue, err := c.sim.GetCellValue(Imps, localTimeCell)
 	if err != nil {
 		return "", fmt.Errorf("error reading local time: %w", err)
 	}
 
-	domTimeValue, err := sim.GetCellValue(Imps, domTimeCell)
+	domTimeValue, err := c.sim.GetCellValue(Imps, domTimeCell)
 	if err != nil {
 		return "", fmt.Errorf("error reading dom time: %w", err)
 	}
 
-	dateValue, err := sim.GetCellValue(Overview, "B15")
+	dateValue, err := c.sim.GetCellValue(Overview, "B15")
 	if err != nil {
 		return "", fmt.Errorf("error reading date: %w", err)
 	}
@@ -192,7 +156,7 @@ func generateTimeline(hr int) (string, error) {
 
 	var timeline strings.Builder
 	timeline.WriteString("====== Protection Hour: ")
-	timeline.WriteString(fmt.Sprintf("%d", hr+1))
+	timeline.WriteString(fmt.Sprintf("%d", c.currentHour+1))
 	timeline.WriteString("  ( Local Time: ")
 	timeline.WriteString(localTimeLong)
 	timeline.WriteString(" ")
@@ -206,16 +170,16 @@ func generateTimeline(hr int) (string, error) {
 	return timeline.String(), nil
 }
 
-func setDraftRate(simhr int) (string, error) {
-	currentRateCell := fmt.Sprintf("Y%d", simhr)
-	previousRateCell := fmt.Sprintf("Z%d", simhr-1)
+func (c *GameLogCmd) draftRateAction() (string, error) {
+	currentRateCell := fmt.Sprintf("Y%d", c.simHour)
+	previousRateCell := fmt.Sprintf("Z%d", c.simHour-1)
 
-	currentRateStr, err := sim.GetCellValue(Military, currentRateCell)
+	currentRateStr, err := c.sim.GetCellValue(Military, currentRateCell)
 	if err != nil {
 		return "", fmt.Errorf("error reading current draftrate: %w", err)
 	}
 
-	previousRateStr, err := sim.GetCellValue(Military, previousRateCell)
+	previousRateStr, err := c.sim.GetCellValue(Military, previousRateCell)
 	if err != nil {
 		return "", fmt.Errorf("error reading previous draftrate: %w", err)
 	}
@@ -235,7 +199,7 @@ func setDraftRate(simhr int) (string, error) {
 	return buf.String(), nil
 }
 
-func releaseUnits(simhr int) string {
+func (c *GameLogCmd) releaseUnitsAction() (string, error) {
 	// Read unit names and unit counts
 	unitNames := make([]string, 8)
 	units := make([]int, 8)
@@ -243,17 +207,17 @@ func releaseUnits(simhr int) string {
 	for i, col := range cols {
 		// Read unit names from row 2
 		unitNameCell := fmt.Sprintf("%s2", col)
-		unitNames[i], _ = sim.GetCellValue(Military, unitNameCell)
+		unitNames[i], _ = c.sim.GetCellValue(Military, unitNameCell)
 
 		// Read unit counts from simhr row
-		unitCountCell := fmt.Sprintf("%s%d", col, simhr)
-		unitCountStr, _ := sim.GetCellValue(Military, unitCountCell)
+		unitCountCell := fmt.Sprintf("%s%d", col, c.simHour)
+		unitCountStr, _ := c.sim.GetCellValue(Military, unitCountCell)
 		units[i], _ = strconv.Atoi(unitCountStr) // Parse to int (assuming integer values)
 	}
 
 	// Read draftees count from AW column
-	drafteesCell := fmt.Sprintf("AW%d", simhr)
-	drafteesStr, _ := sim.GetCellValue(Military, drafteesCell)
+	drafteesCell := fmt.Sprintf("AW%d", c.simHour)
+	drafteesStr, _ := c.sim.GetCellValue(Military, drafteesCell)
 	draftees, _ := strconv.Atoi(drafteesStr) // Parse to int
 
 	// Check for Released Units and Build Message
@@ -285,5 +249,5 @@ func releaseUnits(simhr int) string {
 		sb.WriteString(fmt.Sprintf("You successfully released %d draftees into the peasantry.\n", draftees))
 	}
 
-	return sb.String()
+	return sb.String(), nil
 }

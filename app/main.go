@@ -26,7 +26,8 @@ func main() {
 			os.Exit(1)
 		}
 
-		executeGenerateLogCmd(*sheetFilePath)
+		gameLogCmd := NewGameLog(*sheetFilePath)
+		gameLogCmd.Execute()
 	default:
 		fmt.Println("Unknown command")
 		return

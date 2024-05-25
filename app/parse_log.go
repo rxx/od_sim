@@ -25,6 +25,33 @@ const (
 	TRAIN        = "train"
 )
 
+var valuesMap = map[string]string{
+	"draftees":       "military_draftees",
+	"Draftees":       "military_draftees", // Handle both cases (lower/upper)
+	"Spies":          "military_spies",
+	"Archspies":      "military_assassins",
+	"Wizards":        "military_wizards",
+	"Archmages":      "military_archmages",
+	"Fire Spirit":    "Fire Sprite",
+	"Ice Beast":      "Icebeast",
+	"Frost Mage":     "FrostMage",
+	"Voodoo Magi":    "Voodoo Mage",
+	"Mermen":         "Merman",
+	"Sirens":         "Siren",
+	"Alchemies":      "alchemy",
+	"Barracks":       "barracks",
+	"Factories":      "factory",
+	"Guilds":         "wizard_guild",
+	"Lumber Yards":   "lumberyard",
+	"Lumberyards":    "lumberyard",
+	"Masonries":      "masonry",
+	"Smithies":       "smithy",
+	"Ares Call":      "Ares' Call", // Use Go's built-in escape character for single quotes
+	"Gaias Blessing": "Gaia's Blessing",
+	"Gaias Watch":    "Gaia's Watch",
+	"Miners Sight":   "Miner's Sight",
+}
+
 type Scanner interface {
 	Scan() bool
 	Text() string
@@ -71,6 +98,7 @@ func (c *LogCmd) initActions() {
 	c.actions = []ParseLogFunc{
 		c.tickAction,
 		c.draftrateAction,
+		c.releaseUnitAction,
 	}
 }
 
@@ -199,6 +227,58 @@ func (c *LogCmd) draftrateAction() error {
 	debugLog("Result", result)
 
 	c.addActionResult(result)
+
+	return nil
+}
+
+func (c *LogCmd) releaseUnitAction() error {
+	pattern := regexp.MustCompile(`You successfully released ([\w\s,]+)`)
+	matches := pattern.FindStringSubmatch(c.currentText)
+
+	debugLog("releaseUnitAction", pattern, matches)
+
+	if len(matches) == 0 {
+		return nil
+	}
+
+	releasedText := matches[1]
+	unitPattern := regexp.MustCompile(`(\d+)\s([\w\s]+)`)
+	unitMatches := unitPattern.FindAllStringSubmatch(releasedText, -1)
+
+	debugLog("UnitMatches", unitMatches)
+
+	releaseData := make(ActionResultData)
+
+	for _, unitMatch := range unitMatches {
+		amount, err := strconv.Atoi(unitMatch[1])
+		if err != nil {
+			return fmt.Errorf("error parsing released unit amount: %w", err)
+		}
+		name := strings.TrimSuffix(unitMatch[2], " into the peasantry")
+
+		if mappedName, ok := valuesMap[name]; ok {
+			name = mappedName
+		}
+
+		var resultKey string
+		if strings.HasPrefix(name, "military_") {
+			resultKey = strings.TrimPrefix(name, "military_")
+		} else {
+			resultKey = name
+		}
+
+		releaseData[resultKey] = amount
+
+		result := &ActionResult{
+			Type: RELEASE,
+			Data: releaseData,
+		}
+
+		debugLog("Result", result)
+
+		c.addActionResult(result)
+
+	}
 
 	return nil
 }

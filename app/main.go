@@ -13,6 +13,7 @@ func main() {
 
 	commands := map[string]*flag.FlagSet{
 		GenerateLogCmd: cmdVars.GenerateLogCmd(),
+		ParseLogCmd:    cmdVars.ParseLogCmd(),
 	}
 
 	if len(os.Args) < 2 {
@@ -38,6 +39,11 @@ func main() {
 
 		gameLogCmd := NewGameLog(cmdVars.simPath)
 		gameLogCmd.Execute()
+	case ParseLogCmd:
+		if cmdVars.logPath == "" {
+			cmd.Usage()
+			os.Exit(1)
+		}
 	default:
 		printUsage(commands)
 	}

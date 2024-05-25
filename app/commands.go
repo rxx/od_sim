@@ -14,6 +14,7 @@ type FlagSetVars struct {
 
 const (
 	GenerateLogCmd = "generate_log"
+	ParseLogCmd    = "parse_log"
 )
 
 func (c *FlagSetVars) GenerateLogCmd() *flag.FlagSet {
@@ -21,10 +22,24 @@ func (c *FlagSetVars) GenerateLogCmd() *flag.FlagSet {
 	cmd.BoolVar(&c.debugEnabled, "debug", false, "Enable debug logging")
 	cmd.StringVar(&c.simPath, "sim", "", "Path to the sim file")
 	cmd.Usage = func() {
-		fmt.Printf("Usage of %s generate_log:\n", os.Args[0])
-		cmd.PrintDefaults() // This will print all defined flags and their descriptions
+		fmt.Printf("Usage of %s %s:\n", os.Args[0], GenerateLogCmd)
+		cmd.PrintDefaults()
+		fmt.Println("Example:")
+		fmt.Printf("  %s %s -sim sim.xlsm\n\n", os.Args[0], GenerateLogCmd)
+	}
+
+	return cmd
+}
+
+func (c *FlagSetVars) ParseLogCmd() *flag.FlagSet {
+	cmd := flag.NewFlagSet(ParseLogCmd, flag.ExitOnError)
+	cmd.BoolVar(&c.debugEnabled, "debug", false, "Enable debug logging")
+	cmd.StringVar(&c.logPath, "log", "", "Path to the txt log file")
+	cmd.Usage = func() {
+		fmt.Printf("Usage of %s %s:\n", os.Args[0], ParseLogCmd)
+		cmd.PrintDefaults()
 		fmt.Println("\nExample:")
-		fmt.Printf("  %s generate_log -sim data.xlsm\n", os.Args[0])
+		fmt.Printf("  %s %s -log sim.txt\n", os.Args[0], ParseLogCmd)
 	}
 
 	return cmd

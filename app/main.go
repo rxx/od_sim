@@ -44,6 +44,9 @@ func main() {
 			cmd.Usage()
 			os.Exit(1)
 		}
+
+		cmd := NewLogCmd(cmdVars.logPath)
+		cmd.Execute()
 	default:
 		printUsage(commands)
 	}

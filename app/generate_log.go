@@ -55,10 +55,11 @@ func NewGameLog(path string) *GameLogCmd {
 }
 
 func (c *GameLogCmd) initActions() {
-	c.actions = append(c.actions,
+	c.actions = []ActionFunc{
 		c.tickAction,
 		c.draftRateAction,
-		c.releaseUnitsAction)
+		c.releaseUnitsAction,
+	}
 }
 
 // Starting at row 4 because of extra added row (due to uniform table headers)

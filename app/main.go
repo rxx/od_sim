@@ -6,37 +6,48 @@ import (
 	"os"
 )
 
-var debugEnabled bool
+var cmdVars *FlagSetVars
 
 func main() {
-	generateLogCmd := flag.NewFlagSet("generate_log", flag.ExitOnError)
-	generateLogCmd.BoolVar(&debugEnabled, "debug", false, "Enable debug logging")
-	sheetFilePath := generateLogCmd.String("sim", "", "Path to the sim file")
+	cmdVars = &FlagSetVars{}
+
+	commands := map[string]*flag.FlagSet{
+		GenerateLogCmd: cmdVars.GenerateLogCmd(),
+	}
 
 	if len(os.Args) < 2 {
-		fmt.Println("Expected a command: generate_log")
+		printUsage(commands)
 		os.Exit(1)
 	}
 
-	switch os.Args[1] {
-	case "generate_log":
-		generateLogCmd.Parse(os.Args[2:])
-		if *sheetFilePath == "" {
-			generateLogCmdUsage(generateLogCmd)
+	cmdName := os.Args[1]
+	cmd, ok := commands[cmdName]
+	if !ok {
+		fmt.Printf("Unknown command: %s\n", cmdName)
+		printUsage(commands)
+		os.Exit(1)
+	}
+	cmd.Parse(os.Args[2:])
+
+	switch cmdName {
+	case GenerateLogCmd:
+		if cmdVars.simPath == "" {
+			cmd.Usage()
 			os.Exit(1)
 		}
 
-		gameLogCmd := NewGameLog(*sheetFilePath)
+		gameLogCmd := NewGameLog(cmdVars.simPath)
 		gameLogCmd.Execute()
 	default:
-		fmt.Println("Unknown command")
-		return
+		printUsage(commands)
 	}
 }
 
-func generateLogCmdUsage(cmd *flag.FlagSet) {
-	fmt.Printf("Usage of %s generate_log:\n", os.Args[0])
-	cmd.PrintDefaults() // This will print all defined flags and their descriptions
-	fmt.Println("\nExample:")
-	fmt.Printf("  %s generate_log -sim data.xlsx\n", os.Args[0])
+func printUsage(commands map[string]*flag.FlagSet) {
+	fmt.Printf("Usage: %s <command> [options]\n", os.Args[0])
+	fmt.Println("Available Commands:")
+
+	for _, cmd := range commands {
+		cmd.Usage()
+	}
 }

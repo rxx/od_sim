@@ -8,7 +8,7 @@ import (
 )
 
 func debugLog(values ...interface{}) {
-	if !debugEnabled {
+	if !cmdVars.debugEnabled {
 		return
 	}
 

@@ -105,7 +105,7 @@ func (c *GameLogCmd) executeActions() {
 			c.output.WriteString(fmt.Sprintf("Error on executing action: %v", err))
 			c.output.WriteString("\n")
 
-			if debugEnabled {
+			if cmdVars.debugEnabled {
 				debug.PrintStack()
 			}
 			break

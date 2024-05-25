@@ -77,20 +77,29 @@ func (c *GameLogCmd) initSim() {
 	}
 }
 
+func (c *GameLogCmd) readValue(sheet, cell, errorMsg string) (string, error) {
+	value, err := c.sim.GetCellValue(sheet, cell)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", errorMsg, err)
+	}
+
+	return value, nil
+}
+
 func (c *GameLogCmd) Execute() {
 	defer c.sim.Close()
 
 	// for hr := 0; hr <= LastHour; hr++ {
 	// c.setCurrentHour(hr)
-  // }
+	// }
 	c.setCurrentHour(0)
-  c.executeActions()
+	c.executeActions()
 
 	fmt.Println(c.output.String())
 }
 
 func (c *GameLogCmd) executeActions() {
-  for _, actionFunc := range c.actions {
+	for _, actionFunc := range c.actions {
 		result, err := actionFunc()
 		if err != nil {
 			c.output.WriteString(fmt.Sprintf("Error on executing action: %v", err))
@@ -110,22 +119,23 @@ func (c *GameLogCmd) executeActions() {
 }
 
 func (c *GameLogCmd) tickAction() (string, error) {
+	const dateCell = "B15"
 	localTimeCell := fmt.Sprintf("BY%d", c.simHour)
 	domTimeCell := fmt.Sprintf("BZ%d", c.simHour)
 
-	localTimeValue, err := c.sim.GetCellValue(Imps, localTimeCell)
+	localTimeValue, err := c.readValue(Imps, localTimeCell, "error reading local time")
 	if err != nil {
-		return "", fmt.Errorf("error reading local time: %w", err)
+		return "", err
 	}
 
-	domTimeValue, err := c.sim.GetCellValue(Imps, domTimeCell)
+	domTimeValue, err := c.readValue(Imps, domTimeCell, "error reading dom time")
 	if err != nil {
-		return "", fmt.Errorf("error reading dom time: %w", err)
+		return "", err
 	}
 
-	dateValue, err := c.sim.GetCellValue(Overview, "B15")
+	dateValue, err := c.readValue(Overview, dateCell, "error reading date")
 	if err != nil {
-		return "", fmt.Errorf("error reading date: %w", err)
+		return "", err
 	}
 
 	debugLog("LocalTime", localTimeValue, "DomTime", domTimeValue, "date", dateValue)
@@ -182,14 +192,14 @@ func (c *GameLogCmd) draftRateAction() (string, error) {
 	currentRateCell := fmt.Sprintf("Y%d", c.simHour)
 	previousRateCell := fmt.Sprintf("Z%d", c.simHour-1)
 
-	currentRateStr, err := c.sim.GetCellValue(Military, currentRateCell)
+	currentRateStr, err := c.readValue(Military, currentRateCell, "error reading current draftrate")
 	if err != nil {
-		return "", fmt.Errorf("error reading current draftrate: %w", err)
+		return "", err
 	}
 
-	previousRateStr, err := c.sim.GetCellValue(Military, previousRateCell)
+	previousRateStr, err := c.readValue(Military, previousRateCell, "error reading previous draftrate")
 	if err != nil {
-		return "", fmt.Errorf("error reading previous draftrate: %w", err)
+		return "", err
 	}
 
 	debugLog("CurrentDraftrate", currentRateStr, "PreviousDraftrate", previousRateStr)
@@ -207,6 +217,8 @@ func (c *GameLogCmd) draftRateAction() (string, error) {
 }
 
 func (c *GameLogCmd) releaseUnitsAction() (string, error) {
+	var err error
+
 	// Read unit names and unit counts
 	unitNames := make([]string, 8)
 	units := make([]int, 8)
@@ -214,20 +226,43 @@ func (c *GameLogCmd) releaseUnitsAction() (string, error) {
 	for i, col := range cols {
 		// Read unit names from row 2
 		unitNameCell := fmt.Sprintf("%s2", col)
-		unitNames[i], _ = c.sim.GetCellValue(Military, unitNameCell)
+		unitNames[i], err = c.readValue(Military, unitNameCell, "error reading unit name")
+		if err != nil {
+			return "", err
+		}
 
 		// Read unit counts from simhr row
 		unitCountCell := fmt.Sprintf("%s%d", col, c.simHour)
-		unitCountStr, _ := c.sim.GetCellValue(Military, unitCountCell)
-		units[i], _ = strconv.Atoi(unitCountStr) // Parse to int (assuming integer values)
+		unitCountStr, err := c.readValue(Military, unitCountCell, "error reading unit value")
+		if err != nil {
+			return "", err
+		}
+
+		if unitCountStr == "" {
+			continue
+		}
+
+		units[i], err = strconv.Atoi(unitCountStr)
+		if err != nil {
+			return "", fmt.Errorf("error parsing unit value: %w", err)
+		}
 	}
 
 	// Read draftees count from AW column
 	drafteesCell := fmt.Sprintf("AW%d", c.simHour)
-	drafteesStr, _ := c.sim.GetCellValue(Military, drafteesCell)
-	draftees, _ := strconv.Atoi(drafteesStr) // Parse to int
+	drafteesStr, err := c.readValue(Military, drafteesCell, "error reading draftees value")
+	if err != nil {
+		return "", err
+	}
 
-	// Check for Released Units and Build Message
+	draftees := 0
+	if drafteesStr != "" {
+		draftees, err = strconv.Atoi(drafteesStr)
+		if err != nil {
+			return "", fmt.Errorf("error parsing draftees value: %w", err)
+		}
+	}
+
 	var sb strings.Builder
 	released := false
 	addedUnits := 0
@@ -251,7 +286,6 @@ func (c *GameLogCmd) releaseUnitsAction() (string, error) {
 		sb.Reset()
 	}
 
-	// 3. Check for Draftees
 	if draftees > 0 {
 		sb.WriteString(fmt.Sprintf("You successfully released %d draftees into the peasantry\n", draftees))
 	}

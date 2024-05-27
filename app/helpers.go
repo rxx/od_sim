@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -42,4 +43,8 @@ func debugLog(values ...interface{}) {
 
 func WrapError(err error, msg string) error {
 	return fmt.Errorf("%s: %w", msg, err)
+}
+
+func FloatToInt(value float64) int {
+	return int(math.Round(value))
 }

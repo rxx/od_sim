@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/xuri/excelize/v2"
 )
+
+const currentHour = 24
 
 const (
 	Overview     = "Overview"
@@ -54,8 +55,7 @@ type GameLogCmd struct {
 
 func NewGameLog(path string) *GameLogCmd {
 	gameLogCmd := &GameLogCmd{
-		simPath:     path,
-		currentHour: 0,
+		simPath: path,
 	}
 	gameLogCmd.initActions()
 	gameLogCmd.initSim()
@@ -72,10 +72,34 @@ func (c *GameLogCmd) initActions() {
 	}
 }
 
+func (c *GameLogCmd) readConst(cell string) (float64, error) {
+	value, err := c.readFloatValue(Constants, cell, "error reading const")
+	if err != nil {
+		return 0, err
+	}
+	return value, nil
+}
+
+func (c *GameLogCmd) wrapHour(cellCol string) string {
+	return c.wrapHourAs(cellCol, c.simHour)
+}
+
+func (c *GameLogCmd) wrapHourAs(cellCol string, hour int) string {
+	return fmt.Sprintf("%s%d", cellCol, hour)
+}
+
+func (c *GameLogCmd) readLandSize() (int, error) {
+	value, err := c.readIntValue(Explore, c.wrapHour("B"), "error reading land size")
+	if err != nil {
+		return 0, err
+	}
+	return value, nil
+}
+
 // Starting at row 4 because of extra added row (due to uniform table headers)
 func (c *GameLogCmd) setCurrentHour(hr int) {
-	c.currentHour = hr
-	c.simHour = hr + 4
+	c.currentHour = hr - 1
+	c.simHour = hr + 3
 }
 
 func (c *GameLogCmd) initSim() {
@@ -114,13 +138,30 @@ func (c *GameLogCmd) readIntValue(sheet, cell, errorMsg string) (int, error) {
 	return digit, nil
 }
 
+func (c *GameLogCmd) readFloatValue(sheet, cell, errorMsg string) (float64, error) {
+	value, err := c.readValue(sheet, cell, errorMsg)
+	if err != nil {
+		return 0, err
+	}
+
+	if value == "" {
+		return 0, nil
+	}
+
+	digit, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return 0, WrapError(err, errorMsg)
+	}
+	return digit, nil
+}
+
 func (c *GameLogCmd) Execute() {
 	defer c.sim.Close()
 
 	// for hr := 0; hr <= LastHour; hr++ {
 	// c.setCurrentHour(hr)
 	// }
-	c.setCurrentHour(0)
+	c.setCurrentHour(currentHour)
 	c.executeActions()
 
 	fmt.Println(c.output.String())
@@ -132,10 +173,6 @@ func (c *GameLogCmd) executeActions() {
 		if err != nil {
 			c.output.WriteString(fmt.Sprintf("Error on executing action: %v", err))
 			c.output.WriteString("\n")
-
-			if cmdVars.debugEnabled {
-				debug.PrintStack()
-			}
 			break
 		}
 
@@ -148,8 +185,8 @@ func (c *GameLogCmd) executeActions() {
 
 func (c *GameLogCmd) tickAction() (string, error) {
 	const dateCell = "B15"
-	localTimeCell := fmt.Sprintf("BY%d", c.simHour)
-	domTimeCell := fmt.Sprintf("BZ%d", c.simHour)
+	localTimeCell := c.wrapHour("BY")
+	domTimeCell := c.wrapHour("BZ")
 
 	localTimeValue, err := c.readValue(Imps, localTimeCell, "error reading local time")
 	if err != nil {
@@ -217,8 +254,8 @@ func (c *GameLogCmd) tickAction() (string, error) {
 }
 
 func (c *GameLogCmd) draftRateAction() (string, error) {
-	currentRateCell := fmt.Sprintf("Y%d", c.simHour)
-	previousRateCell := fmt.Sprintf("Z%d", c.simHour-1)
+	currentRateCell := c.wrapHour("Y")
+	previousRateCell := c.wrapHourAs("Z", c.simHour-1)
 
 	currentRateStr, err := c.readValue(Military, currentRateCell, "error reading current draftrate")
 	if err != nil {
@@ -254,14 +291,14 @@ func (c *GameLogCmd) releaseUnitsAction() (string, error) {
 
 	for i, col := range cols {
 		// Read unit names from row 2
-		unitNameCell := fmt.Sprintf("%s2", col)
+		unitNameCell := c.wrapHourAs(col, 2)
 		unitNames[i], err = c.readValue(Military, unitNameCell, "error reading unit name")
 		if err != nil {
 			return "", err
 		}
 
 		// Read unit counts from simhr row
-		unitCountCell := fmt.Sprintf("%s%d", col, c.simHour)
+		unitCountCell := c.wrapHour(col)
 		units[i], err = c.readIntValue(Military, unitCountCell, "error reading unit value")
 		if err != nil {
 			return "", err
@@ -269,7 +306,7 @@ func (c *GameLogCmd) releaseUnitsAction() (string, error) {
 	}
 
 	// Read draftees count from AW column
-	drafteesCell := fmt.Sprintf("AW%d", c.simHour)
+	drafteesCell := c.wrapHour("AW")
 	draftees, err := c.readIntValue(Military, drafteesCell, "error reading draftees value")
 	if err != nil {
 		return "", err
@@ -308,47 +345,58 @@ func (c *GameLogCmd) releaseUnitsAction() (string, error) {
 func (c *GameLogCmd) castMagicSpells() (string, error) {
 	var sb strings.Builder
 
-	exploreCell := fmt.Sprintf("S%d", c.simHour)
-	exploreVal, err := c.readIntValue(Explore, exploreCell, "error on reading explore cell")
+	landBonusVal, err := c.readIntValue(Explore, c.wrapHour("S"), "error on reading explore cell")
 	if err != nil {
 		return "", err
 	}
 
-	checkAndCastSpell := func(spellName, cell string, costMultiplier float64) error {
-		magicVal, err := c.readIntValue(Magic, cell, "error on reading magic cell")
+	landSize, err := c.readLandSize()
+	if err != nil {
+		return "", err
+	}
+
+	checkAndCastSpell := func(spellName, magicCol, multCell string) error {
+		magicCell := c.wrapHour(magicCol)
+		magicVal, err := c.readIntValue(Magic, magicCell, "error on reading magic cell")
+		if err != nil {
+			return err
+		}
+
+		multVal, err := c.readConst(multCell)
 		if err != nil {
 			return err
 		}
 
 		mana := 0
-		if exploreVal != 0 && magicVal != 0 {
-			mana = (magicVal - 20) * 2
+		// if land 20 bonus received
+		if landBonusVal != 0 && magicVal != 0 {
+			mana = FloatToInt((float64(landSize) - 20) * multVal)
 		} else if magicVal != 0 {
-			mana = magicVal * 2
+			mana = FloatToInt(float64(landSize) * multVal)
 		} else {
 			return nil // No spell was cast, so no message to add
 		}
 
-		sb.WriteString(fmt.Sprintf("Your wizards successfully cast %s at a cost of %d mana.\n", spellName, int(float64(mana)*costMultiplier)))
+		sb.WriteString(fmt.Sprintf("Your wizards successfully cast %s at a cost of %d mana.\n", spellName, mana))
 
 		return nil
 	}
 
 	spells := []struct {
-		name           string
-		cell           string
-		costMultiplier float64
+		name string
+		cell string
+		mult string
 	}{
-		{GaiasWatch, fmt.Sprintf("G%d", c.simHour), 1.0},
-		{MiningStrength, fmt.Sprintf("H%d", c.simHour), 1.0},
-		{AresCall, fmt.Sprintf("I%d", c.simHour), 2.5},
-		{MidasTouch, fmt.Sprintf("J%d", c.simHour), 2.5},
-		{Harmony, fmt.Sprintf("K%d", c.simHour), 2.5},
+		{GaiasWatch, "G", "B75"},
+		{MiningStrength, "H", "B76"},
+		{AresCall, "I", "B77"},
+		{MidasTouch, "J", "B78"},
+		{Harmony, "K", "B79"},
 	}
 
 	// Check and cast each spell
 	for _, spell := range spells {
-		if err := checkAndCastSpell(spell.name, spell.cell, spell.costMultiplier); err != nil {
+		if err := checkAndCastSpell(spell.name, spell.cell, spell.mult); err != nil {
 			return "", WrapError(err, "error on casting magic spell")
 		}
 	}

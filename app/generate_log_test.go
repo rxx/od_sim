@@ -342,7 +342,7 @@ func TestReleaseUnitsAction(t *testing.T) {
 				},
 			},
 			expected:    "",
-			expectedErr: fmt.Errorf("error parsing unit value"),
+			expectedErr: fmt.Errorf("error reading unit value"),
 			currentHour: 0,
 		},
 	}

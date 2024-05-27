@@ -88,10 +88,27 @@ func (c *GameLogCmd) initSim() {
 func (c *GameLogCmd) readValue(sheet, cell, errorMsg string) (string, error) {
 	value, err := c.sim.GetCellValue(sheet, cell)
 	if err != nil {
-		return "", fmt.Errorf("%s: %w", errorMsg, err)
+		return "", WrapError(err, errorMsg)
 	}
 
-	return value, nil
+	return strings.TrimSpace(value), nil
+}
+
+func (c *GameLogCmd) readIntValue(sheet, cell, errorMsg string) (int, error) {
+	value, err := c.readValue(sheet, cell, errorMsg)
+	if err != nil {
+		return 0, err
+	}
+
+	if value == "" {
+		return 0, nil
+	}
+
+	digit, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, WrapError(err, errorMsg)
+	}
+	return digit, nil
 }
 
 func (c *GameLogCmd) Execute() {
@@ -164,7 +181,7 @@ func (c *GameLogCmd) tickAction() (string, error) {
 		if err != nil {
 			date, err = time.Parse("2006/01/02", dateValue)
 			if err != nil {
-				return "", fmt.Errorf("error parsing date: %w", err)
+				return "", WrapError(err, "error parsing date: %w")
 			}
 		}
 	}
@@ -228,9 +245,10 @@ func (c *GameLogCmd) releaseUnitsAction() (string, error) {
 	var err error
 
 	// Read unit names and unit counts
-	unitNames := make([]string, 8)
-	units := make([]int, 8)
 	cols := []string{"AX", "AY", "AZ", "BA", "BB", "BC", "BD", "BE"}
+	unitNames := make([]string, len(cols))
+	units := make([]int, len(cols))
+
 	for i, col := range cols {
 		// Read unit names from row 2
 		unitNameCell := fmt.Sprintf("%s2", col)
@@ -241,34 +259,17 @@ func (c *GameLogCmd) releaseUnitsAction() (string, error) {
 
 		// Read unit counts from simhr row
 		unitCountCell := fmt.Sprintf("%s%d", col, c.simHour)
-		unitCountStr, err := c.readValue(Military, unitCountCell, "error reading unit value")
+		units[i], err = c.readIntValue(Military, unitCountCell, "error reading unit value")
 		if err != nil {
 			return "", err
-		}
-
-		if unitCountStr == "" {
-			continue
-		}
-
-		units[i], err = strconv.Atoi(unitCountStr)
-		if err != nil {
-			return "", fmt.Errorf("error parsing unit value: %w", err)
 		}
 	}
 
 	// Read draftees count from AW column
 	drafteesCell := fmt.Sprintf("AW%d", c.simHour)
-	drafteesStr, err := c.readValue(Military, drafteesCell, "error reading draftees value")
+	draftees, err := c.readIntValue(Military, drafteesCell, "error reading draftees value")
 	if err != nil {
 		return "", err
-	}
-
-	draftees := 0
-	if drafteesStr != "" {
-		draftees, err = strconv.Atoi(drafteesStr)
-		if err != nil {
-			return "", fmt.Errorf("error parsing draftees value: %w", err)
-		}
 	}
 
 	var sb strings.Builder

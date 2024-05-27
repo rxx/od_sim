@@ -8,7 +8,7 @@ import (
 )
 
 func debugLog(values ...interface{}) {
-	if !cmdVars.debugEnabled {
+	if cmdVars == nil || !cmdVars.debugEnabled {
 		return
 	}
 
@@ -38,4 +38,8 @@ func debugLog(values ...interface{}) {
 	fmt.Printf("--- DEBUG on [%s:%s:%d] ---\n", filepath.Base(file), funcName, line)
 	fmt.Println(formattedValues...)
 	fmt.Println("--- ^_^ ---")
+}
+
+func WrapError(err error, msg string) error {
+	return fmt.Errorf("%s: %w", msg, err)
 }

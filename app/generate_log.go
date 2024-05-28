@@ -73,6 +73,7 @@ func (c *GameLogCmd) initActions() {
 		c.unlockTechAction,
 		c.dailtyPlatinumAction,
 		c.tradeResources,
+		c.exploreAction,
 	}
 }
 
@@ -524,59 +525,61 @@ func (c *GameLogCmd) tradeResources() (string, error) {
 	return sb.String(), nil
 }
 
-//
-// // ... (other types, constants, etc.)
-// const EXPLORE_ACTION = "explore"
-//
-// func (c *GameLogCmd) parseExplore(simHour int) (string, error) {
-// 	var actions strings.Builder
-// 	getIntValue := func(sheet, axis string) (int, error) {
-// 		// ... (same implementation as before)
-// 	}
-// 	landTypes := []string{"Plains", "Forest", "Mountains", "Hills", "Swamps", "Caverns", "Water"}
-// 	exploreCounts := make([]int, len(landTypes))
-//
-// 	// Read exploration counts for each land type
-// 	for i, landType := range landTypes {
-// 		cellAxis := fmt.Sprintf("%c%d", 'T'+i, simHour) // Calculate cell addresses (T, U, V, ...)
-// 		count, err := getIntValue(ExploreSheet, cellAxis)
-// 		if err != nil {
-// 			return "", err
-// 		}
-// 		exploreCounts[i] = count
-// 	}
-//
-// 	// Check if any exploration happened
-// 	exploreOccurred := false
-// 	for _, count := range exploreCounts {
-// 		if count > 0 {
-// 			exploreOccurred = true
-// 			break
-// 		}
-// 	}
-//
-// 	if exploreOccurred {
-// 		actions.WriteString("Exploration for ")
-//
-// 		// Build list of explored lands
-// 		for i, count := range exploreCounts {
-// 			if count > 0 {
-// 				if actions.Len() > len("Exploration for ") { // Add comma if not the first item
-// 					actions.WriteString(", ")
-// 				}
-// 				actions.WriteString(fmt.Sprintf("%d %s", count, landTypes[i]))
-// 			}
-// 		}
-//
-// 		// Read cost values
-// 		platCost, _ := getIntValue(ExploreSheet, fmt.Sprintf("AH%d", simHour))
-// 		drafteeCost, _ := getIntValue(ExploreSheet, fmt.Sprintf("AI%d", simHour))
-//
-// 		actions.WriteString(fmt.Sprintf(" begun at a cost of %d platinum and %d draftees.\n", platCost, drafteeCost))
-// 	}
-//
-// 	return actions.String(), nil
-// }
+func (c *GameLogCmd) exploreAction() (string, error) {
+	var sb strings.Builder
+	lands := map[string]string{
+		"Plains":    "T",
+		"Forest":    "U",
+		"Mountains": "V",
+		"Hills":     "W",
+		"Swamps":    "X",
+		"Caverns":   "Y",
+		"Water":     "Z",
+	}
+
+	sb.WriteString("Exploration for ")
+
+	addedItems := 0
+	// Read exploration counts for each land type
+	for landType, col := range lands {
+		cell := c.wrapHour(col)
+		value, err := c.readIntValue(Explore, cell, "error on reading land amount")
+		if err != nil {
+			return "", err
+		}
+
+		if value == 0 {
+			continue
+		}
+
+		if addedItems > 0 {
+			sb.WriteString(", ")
+		}
+
+		sb.WriteString(fmt.Sprintf("%d %s", value, landType))
+		addedItems++
+	}
+
+	if addedItems == 0 {
+		sb.Reset()
+		return "", nil
+	}
+
+	// Read cost values
+	platCost, err := c.readIntValue(Explore, c.wrapHour("AH"), "error reading explore plat cost")
+	if err != nil {
+		return "", nil
+	}
+	drafteeCost, err := c.readIntValue(Explore, c.wrapHour("AI"), "error reading explore draftees costs")
+	if err != nil {
+		return "", nil
+	}
+
+	sb.WriteString(fmt.Sprintf(" begun at a cost of %d platinum and %d draftees\n", platCost, drafteeCost))
+
+	return sb.String(), nil
+}
+
 //
 // const DAILY_LAND_ACTION = "daily_land"
 //

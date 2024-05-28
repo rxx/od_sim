@@ -9,8 +9,6 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-const currentHour = 24
-
 const (
 	Overview     = "Overview"
 	Population   = "Population"
@@ -161,7 +159,11 @@ func (c *GameLogCmd) Execute() {
 	// for hr := 0; hr <= LastHour; hr++ {
 	// c.setCurrentHour(hr)
 	// }
-	c.setCurrentHour(currentHour)
+	if cmdVars.hour > 0 {
+		c.setCurrentHour(cmdVars.hour)
+	} else {
+		c.setCurrentHour(1) // FIXME: Just for debug
+	}
 	c.executeActions()
 
 	fmt.Println(c.output.String())
@@ -355,7 +357,10 @@ func (c *GameLogCmd) castMagicSpells() (string, error) {
 		return "", err
 	}
 
-	checkAndCastSpell := func(spellName, magicCol, multCell string) error {
+	checkAndCastSpell := func(spellName, magicCol, multCell string, isRacial bool) error {
+		if isRacial {
+			spellName = RacialSpell
+		}
 		magicCell := c.wrapHour(magicCol)
 		magicVal, err := c.readIntValue(Magic, magicCell, "error on reading magic cell")
 		if err != nil {
@@ -383,64 +388,37 @@ func (c *GameLogCmd) castMagicSpells() (string, error) {
 	}
 
 	spells := []struct {
-		name string
-		cell string
-		mult string
+		name     string
+		cell     string
+		mult     string
+		isRacial bool
 	}{
-		{GaiasWatch, "G", "B75"},
-		{MiningStrength, "H", "B76"},
-		{AresCall, "I", "B77"},
-		{MidasTouch, "J", "B78"},
-		{Harmony, "K", "B79"},
+		{GaiasWatch, "G", "B75", false},
+		{MiningStrength, "H", "B76", false},
+		{AresCall, "I", "B77", false},
+		{MidasTouch, "J", "B78", false},
+		{Harmony, "K", "B79", false},
+		{"", "L", "B80", true},
+		{"", "M", "B80", true},
+		{"", "N", "B80", true},
+		{"", "O", "B80", true},
+		{"", "P", "B80", true},
+		{"", "Q", "B80", true},
+		{"", "R", "B80", true},
+		{"", "S", "B80", true},
+		{"", "T", "B80", true},
+		{"", "U", "B80", true},
 	}
 
 	// Check and cast each spell
 	for _, spell := range spells {
-		if err := checkAndCastSpell(spell.name, spell.cell, spell.mult); err != nil {
+		if err := checkAndCastSpell(spell.name, spell.cell, spell.mult, spell.isRacial); err != nil {
 			return "", WrapError(err, "error on casting magic spell")
 		}
 	}
 	return sb.String(), nil
 }
 
-// func (c *GameLogCmd) parseRacialSpell(simHour int) (string, error) {
-// 	var actions strings.Builder
-//
-// 	// Check if any racial spell is cast
-// 	racialSpellCast := false
-// 	for col := 'L'; col <= 'U'; col++ {
-// 		cell := fmt.Sprintf("%c%d", col, simHour)
-// 		val, err := getIntValue(MagicSheet, cell)
-// 		if err != nil {
-// 			return "", err
-// 		}
-// 		if val != 0 {
-// 			racialSpellCast = true
-// 			break
-// 		}
-// 	}
-//
-// 	if racialSpellCast {
-// 		exploreVal, err := getIntValue(ExploreSheet, fmt.Sprintf("S%d", simHour))
-// 		if err != nil {
-// 			return "", err
-// 		}
-// 		manaVal, err := getIntValue(MagicSheet, fmt.Sprintf("B%d", simHour))
-// 		if err != nil {
-// 			return "", err
-// 		}
-//
-// 		mana := manaVal * 5
-// 		if exploreVal != 0 {
-// 			mana = (manaVal - 20) * 5
-// 		}
-//
-// 		actions.WriteString(fmt.Sprintf("Your wizards successfully cast %s at a cost of %d mana.\n", RacialSpell, mana))
-// 	}
-//
-// 	return actions.String(), nil
-// }
-//
 // func (c *GameLogCmd) parseTechUnlock(simHour int) (string, error) {
 // 	// Check if a tech was unlocked
 // 	techUnlocked, err := c.sim.GetCellValue("Techs", fmt.Sprintf("K%d", simHour))

@@ -20,7 +20,7 @@ const (
 
 func (c *FlagSetVars) GenerateLogCmd() *flag.FlagSet {
 	cmd := flag.NewFlagSet(GenerateLogCmd, flag.ExitOnError)
-	cmd.BoolVar(&c.debugEnabled, "debug", false, "Enable debug logging")
+	// cmd.BoolVar(&c.debugEnabled, "debug", false, "Enable debug logging")
 	cmd.StringVar(&c.simPath, "sim", "", "Path to the sim file")
 	cmd.IntVar(&c.hour, "hour", 0, "Set current hour")
 	cmd.Usage = func() {

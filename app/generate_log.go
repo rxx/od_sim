@@ -22,7 +22,7 @@ const (
 	Imps         = "Imps"
 	Constants    = "Constants"
 	Races        = "Races"
-	LastHour     = 72
+	LastHour     = 73
 
 	// Magic
 	GaiasWatch     = "Gaia's Watch"
@@ -76,7 +76,6 @@ type GameLogCmd struct {
 	simPath     string
 	sim         Sim
 	// sim     *excelize.File
-	output  strings.Builder
 	actions []ActionFunc
 }
 
@@ -197,36 +196,64 @@ func (c *GameLogCmd) readFloatValue(sheet, cell, errorMsg string) (float64, erro
 
 func (c *GameLogCmd) Execute() {
 	defer c.sim.Close()
+	var sb strings.Builder
 
-	// for hr := 0; hr <= LastHour; hr++ {
-	// c.setCurrentHour(hr)
-	// }
 	if cmdVars.hour > 0 {
 		c.setCurrentHour(cmdVars.hour)
+		result, err := c.executeActions()
+		if err != nil {
+			fmt.Println(err)
+		}
+		if result != "" {
+			sb.WriteString(result)
+		}
 	} else {
-		c.setCurrentHour(1) // FIXME: Just for debug
-	}
-	c.executeActions()
+		for hr := 1; hr <= LastHour; hr++ {
+			c.setCurrentHour(hr)
+			result, err := c.executeActions()
+			if err != nil {
+				fmt.Println(err)
+				break
+			}
+			if result == "" {
+				continue
+			}
 
-	fmt.Println(c.output.String())
+			sb.WriteString(result)
+			sb.WriteString("\n")
+		}
+	}
+
+	fmt.Println(sb.String())
 }
 
-func (c *GameLogCmd) executeActions() {
+func (c *GameLogCmd) executeActions() (string, error) {
+	var sb strings.Builder
+
 	for _, actionFunc := range c.actions {
 		result, err := actionFunc()
 		if err != nil {
-			c.output.WriteString(fmt.Sprintf("Error on executing action: %v", err))
-			c.output.WriteString("\n")
-			break
+			return "", fmt.Errorf("error on executing actions: %v", err)
+		}
+		if result == "" {
+			continue
 		}
 
-		if result != "" {
-			c.output.WriteString(result)
-			if !strings.HasSuffix(result, "\n") {
-				c.output.WriteString("\n")
-			}
+		sb.WriteString(result)
+		if !strings.HasSuffix(result, "\n") {
+			sb.WriteString("\n")
 		}
 	}
+
+	stringResult := sb.String()
+
+	// Skip if we have only timeline without actions
+	if strings.HasSuffix(stringResult, "==\n") {
+		stringResult = ""
+		sb.Reset()
+	}
+
+	return stringResult, nil
 }
 
 func (c *GameLogCmd) tickAction() (string, error) {
@@ -494,22 +521,22 @@ func (c *GameLogCmd) dailtyPlatinumAction() (string, error) {
 func (c *GameLogCmd) tradeResources() (string, error) {
 	var sb strings.Builder
 
-	plat, err := c.readIntValue(Production, c.wrapHour("BD"), "can't read platinum value")
+	plat, err := c.readIntValue(Production, c.wrapHour("BC"), "can't read platinum value for trading")
 	if err != nil {
 		return "", err
 	}
 
-	lumber, err := c.readIntValue(Production, c.wrapHour("BE"), "can't read lumber value")
+	lumber, err := c.readIntValue(Production, c.wrapHour("BD"), "can't read lumber value for trading")
 	if err != nil {
 		return "", err
 	}
 
-	ore, err := c.readIntValue(Production, c.wrapHour("BF"), "can't read ore value")
+	ore, err := c.readIntValue(Production, c.wrapHour("BE"), "can't read ore value for trading")
 	if err != nil {
 		return "", err
 	}
 
-	gems, err := c.readIntValue(Production, c.wrapHour("BG"), "can't read gems value")
+	gems, err := c.readIntValue(Production, c.wrapHour("BF"), "can't read gems value for trading")
 	if err != nil {
 		return "", err
 	}

@@ -103,6 +103,7 @@ func (c *GameLogCmd) initActions() {
 		c.dailyLandAction,
 		c.destroyBuildingsAction,
 		c.rezoneAction,
+		c.constructionAction,
 	}
 }
 
@@ -683,71 +684,51 @@ func (c *GameLogCmd) rezoneAction() (string, error) {
 	return sb.String(), nil
 }
 
-//
-// // ... (other types and constants)
-// const CONSTRUCTION_ACTION = "construction"
-//
-// func (c *GameLogCmd) parseConstruction(simHour int) (string, error) {
-// 	var actions strings.Builder
-//
-// 	getIntValue := func(axis string) (int, error) {
-// 		val, err := c.sim.GetCellValue("Construction", axis)
-// 		if err != nil {
-// 			return 0, fmt.Errorf("error reading cell Construction!%s: %w", axis, err)
-// 		}
-// 		intVal, err := strconv.Atoi(val)
-// 		if err != nil {
-// 			return 0, fmt.Errorf("error converting cell Construction!%s value to int: %w", axis, err)
-// 		}
-// 		return intVal, nil
-// 	}
-//
-// 	// Read building construction counts
-// 	buildingCounts := make([]int, 18) // 18 building types (including Homes)
-// 	buildingNames := []string{
-// 		"Homes", "Alchemies", "Farms", "Smithies", "Masonries", "Lumber Yards", "Forest Havens",
-// 		"Ore Mines", "Gryphon Nests", "Factories", "Guard Towers", "Barracks", "Shrines", "Towers",
-// 		"Temples", "Wizard Guilds", "Diamond Mines", "Schools", "Docks",
-// 	}
-// 	cols := []string{"O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "AA", "AB", "AC", "AD", "AE", "AF", "AG"}
-//
-// 	for i, col := range cols {
-// 		buildingCounts[i], _ = getIntValue(fmt.Sprintf("%s%d", col, simHour))
-// 	}
-//
-// 	// Check if any construction occurred
-// 	constructionOccurred := false
-// 	for _, count := range buildingCounts {
-// 		if count > 0 {
-// 			constructionOccurred = true
-// 			break
-// 		}
-// 	}
-//
-// 	if constructionOccurred {
-// 		actions.WriteString("Construction of ")
-// 		comma := false
-//
-// 		// Add constructed buildings to message
-// 		for i, count := range buildingCounts {
-// 			if count > 0 {
-// 				if comma {
-// 					actions.WriteString(", ")
-// 				}
-// 				actions.WriteString(fmt.Sprintf("%d %s", count, buildingNames[i]))
-// 				comma = true
-// 			}
-// 		}
-//
-// 		// Read cost values
-// 		platCost, _ := getIntValue(fmt.Sprintf("AQ%d", simHour))
-// 		lumberCost, _ := getIntValue(fmt.Sprintf("AR%d", simHour))
-//
-// 		actions.WriteString(fmt.Sprintf(" started at a cost of %d platinum and %d lumber.\n", platCost, lumberCost))
-// 	}
-//
-// 	return actions.String(), nil
-// }
+func (c *GameLogCmd) constructionAction() (string, error) {
+	var sb strings.Builder
+	sb.WriteString("Construction of ")
+
+	cols := []string{"O", "P", "Q", "R", "S", "T", "V", "W", "X", "Y", "Z", "AA", "AB", "AC", "AD", "AE", "AF", "AG"}
+
+	addedItems := 0
+	for index, col := range cols {
+		name := buildingNames[index]
+		value, err := c.readIntValue(Construction, c.wrapHour(col), "error on reading constructtion value")
+		if err != nil {
+			return "", err
+		}
+		if value == 0 {
+			continue
+		}
+		if addedItems > 0 {
+			sb.WriteString(", ")
+		}
+
+		sb.WriteString(fmt.Sprintf("%d %s", value, name))
+		addedItems++
+	}
+
+	if addedItems == 0 {
+		sb.Reset()
+		return "", nil
+	}
+
+	// Read cost values
+	platCost, err := c.readIntValue(Construction, c.wrapHour("AQ"), "error reading platinum cost")
+	if err != nil {
+		return "", err
+	}
+
+	lumberCost, err := c.readIntValue(Construction, c.wrapHour("AR"), "error reading lumber cost")
+	if err != nil {
+		return "", err
+	}
+
+	sb.WriteString(fmt.Sprintf(" started at a cost of %d platinum and %d lumber.\n", platCost, lumberCost))
+
+	return sb.String(), nil
+}
+
 //
 // // ... (other types and constants)
 // const MILITARY_TRAINING_ACTION = "military_training"

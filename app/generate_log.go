@@ -104,6 +104,7 @@ func (c *GameLogCmd) initActions() {
 		c.destroyBuildingsAction,
 		c.rezoneAction,
 		c.constructionAction,
+		c.trainUnitsAction,
 	}
 }
 
@@ -729,78 +730,61 @@ func (c *GameLogCmd) constructionAction() (string, error) {
 	return sb.String(), nil
 }
 
-//
-// // ... (other types and constants)
-// const MILITARY_TRAINING_ACTION = "military_training"
-//
-// func (c *GameLogCmd) parseMilitaryTraining(simHour int) (string, error) {
-// 	var actions strings.Builder
-//
-// 	getIntValue := func(axis string) (int, error) {
-// 		val, err := c.sim.GetCellValue("Military", axis)
-// 		if err != nil {
-// 			return 0, fmt.Errorf("error reading cell Military!%s: %w", axis, err)
-// 		}
-// 		intVal, err := strconv.Atoi(val)
-// 		if err != nil {
-// 			return 0, fmt.Errorf("error converting cell Military!%s value to int: %w", axis, err)
-// 		}
-// 		return intVal, nil
-// 	}
-//
-// 	// Read unit training counts and names
-// 	unitNames := make([]string, 8)
-// 	unitCounts := make([]int, 8)
-// 	cols := []string{"AG", "AH", "AI", "AJ", "AK", "AL", "AM", "AN"}
-// 	for i, col := range cols {
-// 		// Read unit names from row 2
-// 		unitNameCell := fmt.Sprintf("%s2", col)
-// 		unitNames[i], _ = c.sim.GetCellValue("Military", unitNameCell)
-//
-// 		// Read unit counts from simhr row
-// 		unitCountCell := fmt.Sprintf("%s%d", col, simHour)
-// 		unitCounts[i], _ = getIntValue(unitCountCell)
-// 	}
-//
-// 	// Calculate total draftees used (excluding spies and wizards)
-// 	draftees := 0
-// 	for i := 0; i < 5; i++ {
-// 		draftees += unitCounts[i]
-// 	}
-//
-// 	// Check if any training occurred
-// 	trainingOccurred := false
-// 	for _, count := range unitCounts {
-// 		if count > 0 {
-// 			trainingOccurred = true
-// 			break
-// 		}
-// 	}
-//
-// 	if trainingOccurred {
-// 		actions.WriteString("Training of ")
-// 		comma := false
-// 		for i, count := range unitCounts {
-// 			if count > 0 {
-// 				if comma {
-// 					actions.WriteString(", ")
-// 				}
-// 				actions.WriteString(fmt.Sprintf("%d %s", count, unitNames[i]))
-// 				comma = true
-// 			}
-// 		}
-//
-// 		// Read cost values
-// 		platCost, _ := getIntValue(fmt.Sprintf("AR%d", simHour))
-// 		oreCost, _ := getIntValue(fmt.Sprintf("AS%d", simHour))
-// 		spyCount := unitCounts[5]    // Index 5 corresponds to spies
-// 		wizardCount := unitCounts[7] // Index 7 corresponds to wizards
-//
-// 		actions.WriteString(fmt.Sprintf(" begun at a cost of %d platinum, %d ore, %d draftees, %d spies, and %d wizards.\n", platCost, oreCost, draftees, spyCount, wizardCount))
-// 	}
-//
-// 	return actions.String(), nil
-// }
+func (c *GameLogCmd) trainUnitsAction() (string, error) {
+	var sb strings.Builder
+	sb.WriteString("Training of ")
+	cols := []string{"AG", "AH", "AI", "AJ", "AK", "AL", "AM", "AN"}
+	addedItems := 0
+
+	drafteesCount := 0
+	spiesCount := 0
+	wizardCount := 0
+	for index, col := range cols {
+		name, err := c.readValue(Military, c.wrapHourAs(col, 2), "error reading unit name cell")
+		if err != nil {
+			return "", err
+		}
+
+		value, err := c.readIntValue(Military, c.wrapHour(col), "error reading unit value cell")
+		if err != nil {
+			return "", err
+		}
+
+		if value == 0 {
+			continue
+		}
+
+		if index == 5 {
+			spiesCount += value
+		} else if index == 7 {
+			wizardCount += value
+		} else {
+			drafteesCount += value
+		}
+
+		if addedItems > 0 {
+			sb.WriteString(", ")
+		}
+
+		sb.WriteString(fmt.Sprintf("%d %s", value, name))
+		addedItems++
+	}
+
+	platCost, err := c.readIntValue(Military, c.wrapHour("AR"), "error reading platinum training cost")
+	if err != nil {
+		return "", err
+	}
+	oreCost, err := c.readIntValue(Military, c.wrapHour("AS"), "error reading ore training cost")
+	if err != nil {
+		return "", err
+	}
+
+	sb.WriteString(fmt.Sprintf(" begun at a cost of %d platinum, %d ore, %d draftees, %d spies, and %d wizards.\n",
+		platCost, oreCost, drafteesCount, spiesCount, wizardCount))
+
+	return sb.String(), nil
+}
+
 //
 // // ... (other types and constants)
 // const IMPROVEMENT_ACTION = "improvement"

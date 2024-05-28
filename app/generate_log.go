@@ -72,6 +72,7 @@ func (c *GameLogCmd) initActions() {
 		c.castMagicSpells,
 		c.unlockTechAction,
 		c.dailtyPlatinumAction,
+		c.tradeResources,
 	}
 }
 
@@ -466,60 +467,63 @@ func (c *GameLogCmd) dailtyPlatinumAction() (string, error) {
 	return sb.String(), nil
 }
 
-//
-// // ... (other types, constants, etc.)
-// const BANK_ACTION = "national_bank"
-//
-// func (c *GameLogCmd) parseNationalBank(simHour int) (string, error) {
-// 	var actions strings.Builder
-//
-// 	// Helper function to get a cell value as an integer
-// 	getIntValue := func(sheet, axis string) (int, error) {
-// 		val, err := c.sim.GetCellValue(sheet, axis)
-// 		if err != nil {
-// 			return 0, fmt.Errorf("error reading cell %s!%s: %w", sheet, axis, err)
-// 		}
-// 		intVal, err := strconv.Atoi(val)
-// 		if err != nil {
-// 			return 0, fmt.Errorf("error converting cell %s!%s value to int: %w", sheet, axis, err)
-// 		}
-// 		return intVal, nil
-// 	}
-//
-// 	// Read values from "Production" sheet
-// 	plat, _ := getIntValue("Production", fmt.Sprintf("BC%d", simHour))
-// 	lumber, _ := getIntValue("Production", fmt.Sprintf("BD%d", simHour))
-// 	ore, _ := getIntValue("Production", fmt.Sprintf("BE%d", simHour))
-// 	gems, _ := getIntValue("Production", fmt.Sprintf("BF%d", simHour))
-//
-// 	if plat != 0 || lumber != 0 || ore != 0 || gems != 0 { // Check if any exchange happened
-// 		var tradedItems []string
-// 		var receivedItems []string
-//
-// 		// Build traded items string
-// 		addItem := func(item string, amount int) {
-// 			if amount < 0 {
-// 				tradedItems = append(tradedItems, fmt.Sprintf("%d %s", -amount, item))
-// 			} else if amount > 0 {
-// 				receivedItems = append(receivedItems, fmt.Sprintf("%d %s", amount, item))
-// 			}
-// 		}
-// 		addItem("platinum", plat)
-// 		addItem("lumber", lumber)
-// 		addItem("ore", ore)
-// 		addItem("gems", gems)
-//
-// 		// Construct the action message
-// 		if len(tradedItems) > 0 {
-// 			actions.WriteString(strings.Join(tradedItems, ", ") + " have been traded for ")
-// 		}
-// 		if len(receivedItems) > 0 {
-// 			actions.WriteString(strings.Join(receivedItems, " and ") + ".\n")
-// 		}
-// 	}
-//
-// 	return actions.String(), nil
-// }
+func (c *GameLogCmd) tradeResources() (string, error) {
+	var sb strings.Builder
+
+	plat, err := c.readIntValue(Production, c.wrapHour("BD"), "can't read platinum value")
+	if err != nil {
+		return "", err
+	}
+
+	lumber, err := c.readIntValue(Production, c.wrapHour("BE"), "can't read lumber value")
+	if err != nil {
+		return "", err
+	}
+
+	ore, err := c.readIntValue(Production, c.wrapHour("BF"), "can't read ore value")
+	if err != nil {
+		return "", err
+	}
+
+	gems, err := c.readIntValue(Production, c.wrapHour("BG"), "can't read gems value")
+	if err != nil {
+		return "", err
+	}
+
+	if plat == 0 && lumber == 0 && ore == 0 && gems == 0 { // Check if any exchange happened
+		return "", nil
+	}
+	var tradedItems []string
+	var receivedItems []string
+
+	addItem := func(item string, amount int) {
+		formatValue := func(value int) string {
+			return fmt.Sprintf("%d %s", value, item)
+		}
+
+		if amount < 0 {
+			tradedItems = append(tradedItems, formatValue(-amount))
+		} else if amount > 0 {
+			receivedItems = append(receivedItems, formatValue(amount))
+		}
+	}
+
+	addItem("platinum", plat)
+	addItem("lumber", lumber)
+	addItem("ore", ore)
+	addItem("gems", gems)
+
+	// Construct the action message
+	if len(tradedItems) > 0 {
+		sb.WriteString(strings.Join(tradedItems, ", ") + " have been traded for ")
+	}
+	if len(receivedItems) > 0 {
+		sb.WriteString(strings.Join(receivedItems, " and ") + "\n")
+	}
+
+	return sb.String(), nil
+}
+
 //
 // // ... (other types, constants, etc.)
 // const EXPLORE_ACTION = "explore"

@@ -74,6 +74,7 @@ func (c *GameLogCmd) initActions() {
 		c.dailtyPlatinumAction,
 		c.tradeResources,
 		c.exploreAction,
+		c.dailyLandAction,
 	}
 }
 
@@ -447,8 +448,6 @@ func (c *GameLogCmd) unlockTechAction() (string, error) {
 }
 
 func (c *GameLogCmd) dailtyPlatinumAction() (string, error) {
-	var sb strings.Builder
-
 	platChecked, err := c.readIntValue(Production, c.wrapHour("C"), "error reading platinum bonus")
 	if err != nil {
 		return "", err
@@ -463,9 +462,7 @@ func (c *GameLogCmd) dailtyPlatinumAction() (string, error) {
 	}
 
 	platinumAwarded := populationValue * PlatAwardedMult
-	sb.WriteString(fmt.Sprintf("You have been awarded with %d platinum\n", platinumAwarded))
-
-	return sb.String(), nil
+	return fmt.Sprintf("You have been awarded with %d platinum\n", platinumAwarded), nil
 }
 
 func (c *GameLogCmd) tradeResources() (string, error) {
@@ -580,29 +577,24 @@ func (c *GameLogCmd) exploreAction() (string, error) {
 	return sb.String(), nil
 }
 
-//
-// const DAILY_LAND_ACTION = "daily_land"
-//
-// func (c *GameLogCmd) parseDailyLand(simHour int) (string, error) {
-// 	var actions strings.Builder
-//
-// 	// Check if exploration is active
-// 	exploreVal, err := c.sim.GetCellValue("Explore", fmt.Sprintf("S%d", simHour))
-// 	if err != nil {
-// 		return "", fmt.Errorf("error reading explore status: %w", err)
-// 	}
-//
-// 	if exploreVal != "0" {
-// 		landType, err := c.sim.GetCellValue("Overview", "B70")
-// 		if err != nil {
-// 			return "", fmt.Errorf("error reading land type: %w", err)
-// 		}
-//
-// 		actions.WriteString(fmt.Sprintf("You have been awarded with 20 %s.\n", landType))
-// 	}
-//
-// 	return actions.String(), nil
-// }
+func (c *GameLogCmd) dailyLandAction() (string, error) {
+	landBonus, err := c.readIntValue(Explore, c.wrapHour("S"), "error on reading land bonus value")
+	if err != nil {
+		return "", err
+	}
+
+	if landBonus == 0 {
+		return "", nil
+	}
+
+	landType, err := c.readValue(Overview, "B70", "error reading land type")
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("You have been awarded with %d %s\n", LandBonus, landType), nil
+}
+
 //
 // const DESTRUCTION_ACTION = "destruction"
 //

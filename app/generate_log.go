@@ -406,11 +406,6 @@ func (c *GameLogCmd) castMagicSpells() (string, error) {
 // func (c *GameLogCmd) parseRacialSpell(simHour int) (string, error) {
 // 	var actions strings.Builder
 //
-// 	// Helper function to read a cell value and convert to int (reuse from previous code)
-// 	getIntValue := func(sheet, axis string) (int, error) {
-// 		// ... (same implementation as before)
-// 	}
-//
 // 	// Check if any racial spell is cast
 // 	racialSpellCast := false
 // 	for col := 'L'; col <= 'U'; col++ {

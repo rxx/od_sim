@@ -105,6 +105,7 @@ func (c *GameLogCmd) initActions() {
 		c.rezoneAction,
 		c.constructionAction,
 		c.trainUnitsAction,
+		c.improvementsAction,
 	}
 }
 
@@ -168,7 +169,9 @@ func (c *GameLogCmd) readIntValue(sheet, cell, errorMsg string) (int, error) {
 	}
 
 	// Remove commas (thousands separators) from the string
-	digit, err := strconv.Atoi(strings.ReplaceAll(value, ",", ""))
+	value = strings.Trim(value, "→ ")
+	value = strings.ReplaceAll(value, ",", "")
+	digit, err := strconv.Atoi(value)
 	if err != nil {
 		return 0, WrapError(err, errorMsg)
 	}
@@ -754,11 +757,12 @@ func (c *GameLogCmd) trainUnitsAction() (string, error) {
 			continue
 		}
 
-		if index == 5 {
+		switch index {
+		case 5:
 			spiesCount += value
-		} else if index == 7 {
+		case 7:
 			wizardCount += value
-		} else {
+		default:
 			drafteesCount += value
 		}
 
@@ -768,6 +772,10 @@ func (c *GameLogCmd) trainUnitsAction() (string, error) {
 
 		sb.WriteString(fmt.Sprintf("%d %s", value, name))
 		addedItems++
+	}
+
+	if addedItems == 0 {
+		return "", nil
 	}
 
 	platCost, err := c.readIntValue(Military, c.wrapHour("AR"), "error reading platinum training cost")
@@ -785,69 +793,53 @@ func (c *GameLogCmd) trainUnitsAction() (string, error) {
 	return sb.String(), nil
 }
 
-//
-// // ... (other types and constants)
-// const IMPROVEMENT_ACTION = "improvement"
-//
-// func (c *GameLogCmd) parseImprovements(simHour int) (string, error) {
-// 	var actions strings.Builder
-//
-// 	// Helper function to get a cell value as a string
-// 	getStringValue := func(axis string) (string, error) {
-// 		val, err := c.sim.GetCellValue("Imps", axis)
-// 		if err != nil {
-// 			return "", fmt.Errorf("error reading cell Imps!%s: %w", axis, err)
-// 		}
-// 		return val, nil
-// 	}
-//
-// 	// Helper function to get a cell value as an integer
-// 	getIntValue := func(axis string) (int, error) {
-// 		val, err := c.sim.GetCellValue("Imps", axis)
-// 		if err != nil {
-// 			return 0, fmt.Errorf("error reading cell Imps!%s: %w", axis, err)
-// 		}
-// 		intVal, err := strconv.Atoi(val)
-// 		if err != nil {
-// 			return 0, fmt.Errorf("error converting cell Imps!%s value to int: %w", axis, err)
-// 		}
-// 		return intVal, nil
-// 	}
-//
-// 	// Function to check for an improvement and format the action message
-// 	checkAndFormatImprovement := func(amountCell, itemCell, targetCell string) (string, error) {
-// 		amount, err := getIntValue(amountCell)
-// 		if err != nil {
-// 			return "", err // Handle errors appropriately
-// 		}
-//
-// 		if amount != 0 {
-// 			item, _ := getStringValue(itemCell)
-// 			target, _ := getStringValue(targetCell)
-// 			return fmt.Sprintf("You invested %d %s into %s.\n", amount, item, target), nil
-// 		}
-// 		return "", nil // No improvement was made, so no message to add
-// 	}
-//
-// 	// Check and format each improvement
-// 	for _, improvement := range []struct {
-// 		amountCell string
-// 		itemCell   string
-// 		targetCell string
-// 	}{
-// 		{fmt.Sprintf("P%d", simHour), fmt.Sprintf("O%d", simHour), fmt.Sprintf("Q%d", simHour)},
-// 		{fmt.Sprintf("S%d", simHour), fmt.Sprintf("R%d", simHour), fmt.Sprintf("T%d", simHour)},
-// 		{fmt.Sprintf("V%d", simHour), fmt.Sprintf("U%d", simHour), fmt.Sprintf("W%d", simHour)},
-// 	} {
-// 		result, err := checkAndFormatImprovement(improvement.amountCell, improvement.itemCell, improvement.targetCell)
-// 		if err != nil {
-// 			return "", err
-// 		}
-// 		actions.WriteString(result)
-// 	}
-//
-// 	return actions.String(), nil
-// }
+func (c *GameLogCmd) improvementsAction() (string, error) {
+	var sb strings.Builder
+
+	checkAndFormatImprovement := func(amountCol, resourceCol, targetCol string) (string, error) {
+		amount, err := c.readIntValue(Imps, c.wrapHour(amountCol), "error on read amout cell")
+		if err != nil {
+			return "", err
+		}
+		if amount == 0 {
+			return "", nil
+		}
+
+		resource, err := c.readValue(Imps, c.wrapHour(resourceCol), "error on read resource cell")
+		if err != nil {
+			return "", err
+		}
+
+		target, err := c.readValue(Imps, c.wrapHour(targetCol), "error on read improvement cell")
+		if err != nil {
+			return "", err
+		}
+
+		return fmt.Sprintf("You invested %d %s into %s.\n", amount, resource, target), nil
+	}
+
+	improvments := []struct {
+		amountCell   string
+		resourceCell string
+		targetCell   string
+	}{
+		{"P", "O", "Q"},
+		{"S", "R", "T"},
+		{"V", "U", "W"},
+	}
+
+	for _, imp := range improvments {
+		result, err := checkAndFormatImprovement(imp.amountCell, imp.resourceCell, imp.targetCell)
+		if err != nil {
+			return "", err
+		}
+
+		sb.WriteString(result)
+	}
+
+	return sb.String(), nil
+}
+
 //
 // // ... (your other types, constants, ExcelizeInterface, etc.)
 //

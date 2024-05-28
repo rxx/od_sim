@@ -37,6 +37,32 @@ const (
 	LandBonus       = 20
 )
 
+var buildingNames = []string{
+	"Homes", "Alchemies", "Farms", "Smithies", "Masonries", "Lumber Yards",
+	"Ore Mines", "Gryphon Nests", "Factories", "Guard Towers", "Barracks",
+	"Shrines", "Towers", "Temples", "Wizard Guilds", "Diamond Mines", "Schools", "Docks",
+}
+
+var exploreLands = map[string]string{
+	"Plains":    "T",
+	"Forest":    "U",
+	"Mountains": "V",
+	"Hills":     "W",
+	"Swamps":    "X",
+	"Caverns":   "Y",
+	"Water":     "Z",
+}
+
+var rezoneLands = map[string]string{
+	"Plains":    "L",
+	"Forest":    "M",
+	"Mountains": "N",
+	"Hills":     "O",
+	"Swamps":    "P",
+	"Caverns":   "Q",
+	"Water":     "R",
+}
+
 type ActionFunc func() (string, error)
 
 type Sim interface {
@@ -75,6 +101,8 @@ func (c *GameLogCmd) initActions() {
 		c.tradeResources,
 		c.exploreAction,
 		c.dailyLandAction,
+		c.destroyBuildingsAction,
+		c.rezoneAction,
 	}
 }
 
@@ -189,7 +217,9 @@ func (c *GameLogCmd) executeActions() {
 
 		if result != "" {
 			c.output.WriteString(result)
-			c.output.WriteString("\n")
+			if !strings.HasSuffix(result, "\n") {
+				c.output.WriteString("\n")
+			}
 		}
 	}
 }
@@ -259,7 +289,7 @@ func (c *GameLogCmd) tickAction() (string, error) {
 	timeline.WriteString(domTimeLong)
 	timeline.WriteString(" ")
 	timeline.WriteString(domTimeShort)
-	timeline.WriteString(" ) ======")
+	timeline.WriteString(" ) ======\n")
 
 	return timeline.String(), nil
 }
@@ -288,32 +318,46 @@ func (c *GameLogCmd) draftRateAction() (string, error) {
 
 	buf.WriteString("Draftrate changed to ")
 	buf.WriteString(currentRateStr)
+	buf.WriteString("\n")
 
 	return buf.String(), nil
 }
 
 func (c *GameLogCmd) releaseUnitsAction() (string, error) {
-	var err error
-
 	// Read unit names and unit counts
 	cols := []string{"AX", "AY", "AZ", "BA", "BB", "BC", "BD", "BE"}
-	unitNames := make([]string, len(cols))
-	units := make([]int, len(cols))
 
-	for i, col := range cols {
-		// Read unit names from row 2
-		unitNameCell := c.wrapHourAs(col, 2)
-		unitNames[i], err = c.readValue(Military, unitNameCell, "error reading unit name")
+	var sb strings.Builder
+	sb.WriteString("You successfully released ")
+
+	addedItems := 0
+	for _, col := range cols {
+		name, err := c.readValue(Military, c.wrapHourAs(col, 2), "error reading unit name")
 		if err != nil {
 			return "", err
 		}
 
-		// Read unit counts from simhr row
-		unitCountCell := c.wrapHour(col)
-		units[i], err = c.readIntValue(Military, unitCountCell, "error reading unit value")
+		value, err := c.readIntValue(Military, c.wrapHour(col), "error reading unit value")
 		if err != nil {
 			return "", err
 		}
+
+		if value == 0 {
+			continue
+		}
+
+		if addedItems > 0 {
+			sb.WriteString(", ")
+		}
+
+		sb.WriteString(fmt.Sprintf("%d %s", value, name))
+		addedItems++
+	}
+
+	if addedItems == 0 {
+		sb.Reset()
+	} else {
+		sb.WriteString("\n")
 	}
 
 	// Read draftees count from AW column
@@ -321,29 +365,6 @@ func (c *GameLogCmd) releaseUnitsAction() (string, error) {
 	draftees, err := c.readIntValue(Military, drafteesCell, "error reading draftees value")
 	if err != nil {
 		return "", err
-	}
-
-	var sb strings.Builder
-	released := false
-	addedUnits := 0
-
-	sb.WriteString("You successfully released ")
-
-	for i := 0; i < len(units); i++ {
-		if units[i] > 0 {
-			released = true
-			if addedUnits > 0 {
-				sb.WriteString(", ") // Add comma before each unit except the first
-			}
-			addedUnits++
-			sb.WriteString(fmt.Sprintf("%d %s", units[i], unitNames[i]))
-		}
-	}
-
-	if released {
-		sb.WriteString("\n")
-	} else {
-		sb.Reset()
 	}
 
 	if draftees > 0 {
@@ -524,21 +545,12 @@ func (c *GameLogCmd) tradeResources() (string, error) {
 
 func (c *GameLogCmd) exploreAction() (string, error) {
 	var sb strings.Builder
-	lands := map[string]string{
-		"Plains":    "T",
-		"Forest":    "U",
-		"Mountains": "V",
-		"Hills":     "W",
-		"Swamps":    "X",
-		"Caverns":   "Y",
-		"Water":     "Z",
-	}
 
 	sb.WriteString("Exploration for ")
 
 	addedItems := 0
 	// Read exploration counts for each land type
-	for landType, col := range lands {
+	for landType, col := range exploreLands {
 		cell := c.wrapHour(col)
 		value, err := c.readIntValue(Explore, cell, "error on reading land amount")
 		if err != nil {
@@ -595,124 +607,82 @@ func (c *GameLogCmd) dailyLandAction() (string, error) {
 	return fmt.Sprintf("You have been awarded with %d %s\n", LandBonus, landType), nil
 }
 
-//
-// const DESTRUCTION_ACTION = "destruction"
-//
-// func (c *GameLogCmd) parseDestruction(simHour int) (string, error) {
-// 	var actions strings.Builder
-//
-// 	// Helper function to get a cell value as an integer
-// 	getIntValue := func(axis string) (int, error) {
-// 		val, err := c.sim.GetCellValue("Construction", axis)
-// 		if err != nil {
-// 			return 0, fmt.Errorf("error reading cell Construction!%s: %w", axis, err)
-// 		}
-// 		intVal, err := strconv.Atoi(val)
-// 		if err != nil {
-// 			return 0, fmt.Errorf("error converting cell Construction!%s value to int: %w", axis, err)
-// 		}
-// 		return intVal, nil
-// 	}
-//
-// 	// Read building destruction counts
-// 	buildingCounts := make([]int, 18) // 18 building types (including Homes)
-// 	buildingNames := []string{
-// 		"Homes", "Alchemies", "Farms", "Smithies", "Masonries", "Lumber Yards", "Forest Havens",
-// 		"Ore Mines", "Gryphon Nests", "Factories", "Guard Towers", "Barracks", "Shrines", "Towers",
-// 		"Temples", "Wizard Guilds", "Diamond Mines", "Schools", "Docks",
-// 	}
-// 	cols := []string{"BW", "BX", "BY", "BZ", "CA", "CB", "CC", "CD", "CE", "CF", "CG", "CH", "CI", "CJ", "CK", "CL", "CM", "CN", "CO"}
-//
-// 	for i, col := range cols {
-// 		buildingCounts[i], _ = getIntValue(fmt.Sprintf("%s%d", col, simHour))
-// 	}
-//
-// 	// Check if any destruction occurred
-// 	destructionOccurred := false
-// 	for _, count := range buildingCounts {
-// 		if count > 0 {
-// 			destructionOccurred = true
-// 			break
-// 		}
-// 	}
-//
-// 	if destructionOccurred {
-// 		actions.WriteString("Destruction of ")
-// 		comma := false
-//
-// 		// Add destroyed buildings to message
-// 		for i, count := range buildingCounts {
-// 			if count > 0 {
-// 				if comma {
-// 					actions.WriteString(", ")
-// 				}
-// 				actions.WriteString(fmt.Sprintf("%d %s", count, buildingNames[i]))
-// 				comma = true
-// 			}
-// 		}
-//
-// 		actions.WriteString(" is complete.\n")
-// 	}
-//
-// 	return actions.String(), nil
-// }
-//
-// // ... (other types and constants)
-// const REZONE_ACTION = "rezone"
-//
-// func (c *GameLogCmd) parseRezone(simHour int) (string, error) {
-// 	var actions strings.Builder
-//
-// 	getIntValue := func(axis string) (int, error) {
-// 		val, err := c.sim.GetCellValue("Rezone", axis)
-// 		if err != nil {
-// 			return 0, fmt.Errorf("error reading cell Rezone!%s: %w", axis, err)
-// 		}
-// 		intVal, err := strconv.Atoi(val)
-// 		if err != nil {
-// 			return 0, fmt.Errorf("error converting cell Rezone!%s value to int: %w", axis, err)
-// 		}
-// 		return intVal, nil
-// 	}
-//
-// 	// Read rezoning counts for each land type
-// 	landTypes := []string{"Plains", "Forest", "Mountains", "Hills", "Swamps", "Caverns", "Water"}
-// 	rezoneCounts := make([]int, len(landTypes))
-// 	for i, landType := range landTypes {
-// 		cellAxis := fmt.Sprintf("%c%d", 'L'+i, simHour)
-// 		rezoneCounts[i], _ = getIntValue(cellAxis)
-// 	}
-//
-// 	// Check if any rezoning occurred
-// 	rezoningOccurred := false
-// 	for _, count := range rezoneCounts {
-// 		if count != 0 {
-// 			rezoningOccurred = true
-// 			break
-// 		}
-// 	}
-//
-// 	if rezoningOccurred {
-// 		// Read cost
-// 		platCost, _ := getIntValue(fmt.Sprintf("Y%d", simHour))
-// 		// Build message
-// 		actions.WriteString(fmt.Sprintf("Rezoning begun at a cost of %d platinum. The changes in land are as following: ", platCost))
-//
-// 		comma := false
-// 		for i, count := range rezoneCounts {
-// 			if count != 0 {
-// 				if comma {
-// 					actions.WriteString(", ")
-// 				}
-// 				actions.WriteString(fmt.Sprintf("%d %s", count, landTypes[i]))
-// 				comma = true
-// 			}
-// 		}
-// 		actions.WriteString("\n")
-// 	}
-//
-// 	return actions.String(), nil
-// }
+func (c *GameLogCmd) destroyBuildingsAction() (string, error) {
+	var sb strings.Builder
+
+	cols := []string{
+		"BW", "BX", "BY", "BZ", "CA", "CB", "CD", "CE", "CF", "CG",
+		"CH", "CI", "CJ", "CK", "CL", "CM", "CN", "CO",
+	}
+
+	sb.WriteString("Destruction of ")
+	addedItems := 0
+
+	for index, col := range cols {
+		name := buildingNames[index]
+		value, err := c.readIntValue(Construction, c.wrapHour(col), "error on reading destroy value")
+		if err != nil {
+			return "", err
+		}
+
+		if value == 0 {
+			continue
+		}
+
+		if addedItems > 0 {
+			sb.WriteString(", ")
+		}
+
+		sb.WriteString(fmt.Sprintf("%d %s", value, name))
+		addedItems++
+	}
+
+	if addedItems == 0 {
+		sb.Reset()
+		return "", nil
+	}
+
+	sb.WriteString(" is complete\n")
+
+	return sb.String(), nil
+}
+
+func (c *GameLogCmd) rezoneAction() (string, error) {
+	var sb strings.Builder
+
+	platCost, err := c.readIntValue(Rezone, c.wrapHour("Y"), "error on reading rezone cost")
+	if err != nil {
+		return "", err
+	}
+	if platCost == 0 {
+		return "", nil
+	}
+
+	sb.WriteString(fmt.Sprintf("Rezoning begun at a cost of %d platinum. The changes in land are as following: ", platCost))
+
+	addedItems := 0
+	for landType, col := range rezoneLands {
+		value, err := c.readIntValue(Rezone, c.wrapHour(col), "error on reading rezone value")
+		if err != nil {
+			return "", err
+		}
+
+		if value == 0 {
+			continue
+		}
+		if addedItems > 0 {
+			sb.WriteString(", ")
+		}
+
+		sb.WriteString(fmt.Sprintf("%d %s", value, landType))
+		addedItems++
+	}
+
+	sb.WriteString("\n")
+
+	return sb.String(), nil
+}
+
 //
 // // ... (other types and constants)
 // const CONSTRUCTION_ACTION = "construction"

@@ -32,6 +32,9 @@ const (
 	Harmony        = "Harmony"
 
 	RacialSpell = "Racial Spell"
+
+	PlatAwardedMult = 4
+	LandBonus       = 20
 )
 
 type ActionFunc func() (string, error)
@@ -67,6 +70,8 @@ func (c *GameLogCmd) initActions() {
 		c.draftRateAction,
 		c.releaseUnitsAction,
 		c.castMagicSpells,
+		c.unlockTechAction,
+		c.dailtyPlatinumAction,
 	}
 }
 
@@ -129,7 +134,8 @@ func (c *GameLogCmd) readIntValue(sheet, cell, errorMsg string) (int, error) {
 		return 0, nil
 	}
 
-	digit, err := strconv.Atoi(value)
+	// Remove commas (thousands separators) from the string
+	digit, err := strconv.Atoi(strings.ReplaceAll(value, ",", ""))
 	if err != nil {
 		return 0, WrapError(err, errorMsg)
 	}
@@ -373,9 +379,9 @@ func (c *GameLogCmd) castMagicSpells() (string, error) {
 		}
 
 		mana := 0
-		// if land 20 bonus received
+		// if land bonus received
 		if landBonusVal != 0 && magicVal != 0 {
-			mana = FloatToInt((float64(landSize) - 20) * multVal)
+			mana = FloatToInt((float64(landSize) - LandBonus) * multVal)
 		} else if magicVal != 0 {
 			mana = FloatToInt(float64(landSize) * multVal)
 		} else {
@@ -419,60 +425,47 @@ func (c *GameLogCmd) castMagicSpells() (string, error) {
 	return sb.String(), nil
 }
 
-// func (c *GameLogCmd) parseTechUnlock(simHour int) (string, error) {
-// 	// Check if a tech was unlocked
-// 	techUnlocked, err := c.sim.GetCellValue("Techs", fmt.Sprintf("K%d", simHour))
-// 	if err != nil {
-// 		return "", fmt.Errorf("error reading tech unlocked status: %w", err)
-// 	}
-//
-// 	if techUnlocked != "0" { // Check if tech was unlocked
-// 		techName, err := c.sim.GetCellValue("Techs", fmt.Sprintf("CA%d", simHour))
-// 		if err != nil {
-// 			return "", fmt.Errorf("error reading tech name: %w", err)
-// 		}
-//
-// 		return fmt.Sprintf("You have unlocked %s\n", techName), nil
-// 	}
-//
-// 	return "", nil // No tech unlocked
-// }
-//
-// const PLATINUM_ACTION = "daily_platinum" // Added a constant for the action type
-//
-// func (c *GameLogCmd) parseDailyPlatinum(simHour int) (string, error) {
-// 	var actions strings.Builder
-//
-// 	// Helper function to get a cell value as an integer (similar to before)
-// 	getIntValue := func(sheet, axis string) (int, error) {
-// 		val, err := c.sim.GetCellValue(sheet, axis)
-// 		if err != nil {
-// 			return 0, fmt.Errorf("error reading cell %s!%s: %w", sheet, axis, err)
-// 		}
-// 		intVal, err := strconv.Atoi(val)
-// 		if err != nil {
-// 			return 0, fmt.Errorf("error converting cell %s!%s value to int: %w", sheet, axis, err)
-// 		}
-// 		return intVal, nil
-// 	}
-//
-// 	productionValue, err := getIntValue("Production", fmt.Sprintf("C%d", simHour))
-// 	if err != nil {
-// 		return "", err // Propagate the error
-// 	}
-//
-// 	if productionValue != 0 {
-// 		populationValue, err := getIntValue("Population", fmt.Sprintf("C%d", simHour))
-// 		if err != nil {
-// 			return "", err // Propagate the error
-// 		}
-//
-// 		platinumAwarded := populationValue * 4
-// 		actions.WriteString(fmt.Sprintf("You have been awarded with %d platinum.\n", platinumAwarded))
-// 	}
-//
-// 	return actions.String(), nil
-// }
+func (c *GameLogCmd) unlockTechAction() (string, error) {
+	// Check if a tech was unlocked
+	techUnlocked, err := c.readIntValue(Techs, c.wrapHour("K"), "error reading tech status")
+	if err != nil {
+		return "", err
+	}
+
+	if techUnlocked > 0 {
+		techName, err := c.readValue(Techs, c.wrapHour("CA"), "error reading tech name")
+		if err != nil {
+			return "", err
+		}
+
+		return fmt.Sprintf("You have unlocked %s\n", techName), nil
+	}
+
+	return "", nil
+}
+
+func (c *GameLogCmd) dailtyPlatinumAction() (string, error) {
+	var sb strings.Builder
+
+	platChecked, err := c.readIntValue(Production, c.wrapHour("C"), "error reading platinum bonus")
+	if err != nil {
+		return "", err
+	}
+	if platChecked == 0 {
+		return "", nil
+	}
+
+	populationValue, err := c.readIntValue(Population, c.wrapHour("C"), "error reading population")
+	if err != nil {
+		return "", err
+	}
+
+	platinumAwarded := populationValue * PlatAwardedMult
+	sb.WriteString(fmt.Sprintf("You have been awarded with %d platinum\n", platinumAwarded))
+
+	return sb.String(), nil
+}
+
 //
 // // ... (other types, constants, etc.)
 // const BANK_ACTION = "national_bank"

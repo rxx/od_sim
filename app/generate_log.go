@@ -276,8 +276,6 @@ func (c *GameLogCmd) tickAction() (string, error) {
 		return "", err
 	}
 
-	debugLog("LocalTime", localTimeValue, "DomTime", domTimeValue, "date", dateValue)
-
 	localTime, err := time.Parse("15:04", localTimeValue)
 	if err != nil {
 		return "", fmt.Errorf("error parsing local time: %w", err)
@@ -339,8 +337,6 @@ func (c *GameLogCmd) draftRateAction() (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	debugLog("CurrentDraftrate", currentRateStr, "PreviousDraftrate", previousRateStr)
 
 	var buf strings.Builder
 
@@ -431,7 +427,8 @@ func (c *GameLogCmd) castMagicSpells() (string, error) {
 
 		multVal, err := c.readConst(multCell)
 		if err != nil {
-			return err
+			multVal = 2
+			// return err
 		}
 
 		mana := 0
@@ -724,7 +721,7 @@ func (c *GameLogCmd) constructionAction() (string, error) {
 	addedItems := 0
 	for index, col := range cols {
 		name := buildingNames[index]
-		value, err := c.readIntValue(Construction, c.wrapHour(col), "error on reading constructtion value")
+		value, err := c.readIntValue(Construction, c.wrapHour(col), "error on reading construction value")
 		if err != nil {
 			return "", err
 		}

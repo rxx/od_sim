@@ -9,10 +9,6 @@ import (
 )
 
 func debugLog(values ...interface{}) {
-	if cmdVars == nil || !cmdVars.debugEnabled {
-		return
-	}
-
 	formattedValues := make([]interface{}, len(values))
 	for i, value := range values {
 		switch v := value.(type) {

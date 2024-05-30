@@ -13,9 +13,14 @@ The code contains only final script generation logic. All other things left the 
 Remember to open Excel sim before generation. ALl formulas should run and update their values with Excel.
 
 # Usage
+Next will work for Linux and Mac
 ```
 od_sim generate_log -sim OpenDominionSim.xlsm -result sim.txt
 ```
+
+For windows you can also run `od_sim` from terminal or put command line to the exe options.
+
+I don't have Windows and can't test and describe the actual process, it would be helpfull if someone describe that and make a pull request ^_^
 
 Get file from [Yami-10/OD-Simulator](https://github.com/Yami-10/OD-Simulator)
 

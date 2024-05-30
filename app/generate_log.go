@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -74,14 +75,16 @@ type GameLogCmd struct {
 	currentHour int
 	simHour     int
 	simPath     string
+	resultPath  string
 	sim         Sim
 	// sim     *excelize.File
 	actions []ActionFunc
 }
 
-func NewGameLog(path string) *GameLogCmd {
+func NewGameLog(path, resultPath string) *GameLogCmd {
 	gameLogCmd := &GameLogCmd{
-		simPath: path,
+		simPath:    path,
+		resultPath: resultPath,
 	}
 	gameLogCmd.initActions()
 	gameLogCmd.initSim()
@@ -224,7 +227,22 @@ func (c *GameLogCmd) Execute() {
 		}
 	}
 
-	fmt.Println(sb.String())
+	c.PrintResult(sb.String())
+}
+
+func (c *GameLogCmd) PrintResult(result string) {
+	if c.resultPath == "" || c.resultPath == "std" {
+		fmt.Println(result)
+		return
+	}
+
+	err := os.WriteFile(c.resultPath, []byte(result), 0644)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return
+	}
+
+	fmt.Printf("Successfully wrote result to %s\n", c.resultPath)
 }
 
 func (c *GameLogCmd) executeActions() (string, error) {
@@ -563,7 +581,7 @@ func (c *GameLogCmd) tradeResources() (string, error) {
 
 	// Construct the action message
 	if len(tradedItems) > 0 {
-		sb.WriteString(strings.Join(tradedItems, ", ") + " have been traded for ")
+		sb.WriteString(strings.Join(tradedItems, "and ") + " have been traded for ")
 	}
 	if len(receivedItems) > 0 {
 		sb.WriteString(strings.Join(receivedItems, " and ") + "\n")

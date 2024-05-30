@@ -37,7 +37,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		gameLogCmd := NewGameLog(cmdVars.simPath)
+		gameLogCmd := NewGameLog(cmdVars.simPath, cmdVars.resultPath)
 		gameLogCmd.Execute()
 	case ParseLogCmd:
 		if cmdVars.logPath == "" {
@@ -45,7 +45,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		cmd := NewLogCmd(cmdVars.logPath)
+		cmd := NewLogCmd(cmdVars.logPath, cmdVars.resultPath)
 		cmd.Execute()
 	default:
 		printUsage(commands)

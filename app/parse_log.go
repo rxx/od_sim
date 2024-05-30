@@ -74,6 +74,7 @@ type ActionResult struct {
 type LogCmd struct {
 	currentHour   int
 	logPath       string
+	resultPath    string
 	scanner       Scanner
 	file          LogFile
 	currentText   string
@@ -82,9 +83,10 @@ type LogCmd struct {
 	actions       []ParseLogFunc
 }
 
-func NewLogCmd(path string) *LogCmd {
+func NewLogCmd(path, resultPath string) *LogCmd {
 	cmd := &LogCmd{
 		logPath:     path,
+		resultPath:  resultPath,
 		currentHour: 0,
 		lineNumber:  0,
 	}

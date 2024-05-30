@@ -9,6 +9,7 @@ import (
 type FlagSetVars struct {
 	debugEnabled bool
 	simPath      string
+	resultPath   string
 	logPath      string
 	hour         int
 }
@@ -22,12 +23,13 @@ func (c *FlagSetVars) GenerateLogCmd() *flag.FlagSet {
 	cmd := flag.NewFlagSet(GenerateLogCmd, flag.ExitOnError)
 	// cmd.BoolVar(&c.debugEnabled, "debug", false, "Enable debug logging")
 	cmd.StringVar(&c.simPath, "sim", "", "Path to the sim file")
+	cmd.StringVar(&c.resultPath, "result", "", "Path to the result file \"\" or \"std\" prints to stdout")
 	cmd.IntVar(&c.hour, "hour", 0, "Set current hour")
 	cmd.Usage = func() {
 		fmt.Printf("Usage of %s %s:\n", os.Args[0], GenerateLogCmd)
 		cmd.PrintDefaults()
 		fmt.Println("Example:")
-		fmt.Printf("  %s %s -sim sim.xlsm\n\n", os.Args[0], GenerateLogCmd)
+		fmt.Printf("  %s %s -sim sim.xlsm -result sim.txt\n\n", os.Args[0], GenerateLogCmd)
 	}
 
 	return cmd

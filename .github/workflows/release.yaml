@@ -1,16 +1,13 @@
 on:
-  release:
-    types: 
-      - created
-      - published
+  push:
+    tags:
+      - "v*.*.*"
 
 permissions:
-    contents: read
+    contents: write
 
 jobs:
   releases-matrix:
-    permissions:
-      contents: write
     name: Release Go Binary
     runs-on: ubuntu-latest
     strategy:

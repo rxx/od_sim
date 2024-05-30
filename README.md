@@ -13,7 +13,7 @@ The code contains only final script generation logic. All other things left the 
 Remember to open Excel sim before generation. ALl formulas should run and update their values with Excel.
 
 # Get binary
-You can use prebuilt binaries in Releases page or build from sources with
+You can use prebuilt binaries at [Releases](https://github.com/rxx/od_sim/releases) or build from sources with
 
 To install `go` check [instructions here](https://go.dev/doc/install)
 

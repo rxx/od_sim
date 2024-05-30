@@ -3,11 +3,12 @@ on:
     types: [created]
 
 permissions:
-    contents: write
-    packages: write
+    contents: read
 
 jobs:
   releases-matrix:
+    permissions:
+      contents: write
     name: Release Go Binary
     runs-on: ubuntu-latest
     strategy:
@@ -28,3 +29,5 @@ jobs:
         goversion: "1.21"
         project_path: "./app"
         binary_name: "od_sim"
+        overwrite: true
+        upload: true

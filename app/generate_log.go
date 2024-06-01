@@ -581,7 +581,7 @@ func (c *GameLogCmd) tradeResources() (string, error) {
 
 	// Construct the action message
 	if len(tradedItems) > 0 {
-		sb.WriteString(strings.Join(tradedItems, "and ") + " have been traded for ")
+		sb.WriteString(strings.Join(tradedItems, " and ") + " have been traded for ")
 	}
 	if len(receivedItems) > 0 {
 		sb.WriteString(strings.Join(receivedItems, " and ") + "\n")

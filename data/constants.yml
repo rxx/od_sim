@@ -1,0 +1,56 @@
+buildings:
+  alchemy:
+    alias: al
+    platinum: 45
+    land: plain
+  home:
+    alias: ho
+    people: 30
+    jobs: 0
+    can_be_increased: true
+    land: race
+  barrack:
+    alias: ba
+    people: 36
+    jobs: 0
+    can_be_increased: false
+    land: hill
+  factory:
+    # Reduces construction cost -5% max 50%
+    alias: fac
+    jobs: 25
+    can_be_increased: true
+    land: hill
+  default:
+    jobs: 20
+    people: 15
+    can_be_increased: true
+  diamond_mine:
+    alias:
+      - dm
+      - dmine
+    land: cavern
+    gems: 15
+  dock:
+    alias: do
+    land: water
+    food: 40
+    boat: 0.05
+  farm:
+    alias: fa
+    food: 80
+    land: plain
+  lumberyard:
+    alias: ly
+    land: forest
+    lumber: 50
+  ore_mine:
+    alias:
+      - mine
+      - om
+    land: mountain
+    ore: 60
+  tower:
+    mana: 25
+    land: swamp
+    alias: to

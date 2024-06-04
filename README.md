@@ -19,9 +19,13 @@ To install `go` check [instructions here](https://go.dev/doc/install)
 
 and then run
 ```
-go install github.com/rxx/od_sim@latest
+go install github.com/rxx/od_sim/app@latest
 ```
+it installs to `GOPATH/bin` with a name `app`. (weird, huh?)
 
+Rename it to `od_sim` or whatever you like.
+
+Make sure `GOPATH` is visible to the system. [This guide](https://go.dev/wiki/SettingGOPATH) will help you.
 
 # Usage
 Next will work for Linux and Mac

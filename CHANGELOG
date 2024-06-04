@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/). 
 
 ## [Unreleased]
 
+## [1.0.2] - 2024-06-04
+### Fixed
+- Added period after all actions.
+
 ## [1.0.1] - 2024-06-01
 ### Fixed
 - Added space between "and" in "traded" action

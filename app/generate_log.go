@@ -258,6 +258,7 @@ func (c *GameLogCmd) executeActions() (string, error) {
 		}
 
 		sb.WriteString(result)
+
 		if !strings.HasSuffix(result, "\n") {
 			sb.WriteString("\n")
 		}
@@ -364,7 +365,7 @@ func (c *GameLogCmd) draftRateAction() (string, error) {
 
 	buf.WriteString("Draftrate changed to ")
 	buf.WriteString(currentRateStr)
-	buf.WriteString("\n")
+	buf.WriteString(".\n")
 
 	return buf.String(), nil
 }
@@ -403,7 +404,7 @@ func (c *GameLogCmd) releaseUnitsAction() (string, error) {
 	if addedItems == 0 {
 		sb.Reset()
 	} else {
-		sb.WriteString("\n")
+		sb.WriteString(".\n")
 	}
 
 	// Read draftees count from AW column
@@ -414,7 +415,7 @@ func (c *GameLogCmd) releaseUnitsAction() (string, error) {
 	}
 
 	if draftees > 0 {
-		sb.WriteString(fmt.Sprintf("You successfully released %d draftees into the peasantry\n", draftees))
+		sb.WriteString(fmt.Sprintf("You successfully released %d draftees into the peasantry.\n", draftees))
 	}
 
 	return sb.String(), nil
@@ -509,7 +510,7 @@ func (c *GameLogCmd) unlockTechAction() (string, error) {
 			return "", err
 		}
 
-		return fmt.Sprintf("You have unlocked %s\n", techName), nil
+		return fmt.Sprintf("You have unlocked %s.\n", techName), nil
 	}
 
 	return "", nil
@@ -530,7 +531,7 @@ func (c *GameLogCmd) dailtyPlatinumAction() (string, error) {
 	}
 
 	platinumAwarded := populationValue * PlatAwardedMult
-	return fmt.Sprintf("You have been awarded with %d platinum\n", platinumAwarded), nil
+	return fmt.Sprintf("You have been awarded with %d platinum.\n", platinumAwarded), nil
 }
 
 func (c *GameLogCmd) tradeResources() (string, error) {
@@ -584,7 +585,7 @@ func (c *GameLogCmd) tradeResources() (string, error) {
 		sb.WriteString(strings.Join(tradedItems, " and ") + " have been traded for ")
 	}
 	if len(receivedItems) > 0 {
-		sb.WriteString(strings.Join(receivedItems, " and ") + "\n")
+		sb.WriteString(strings.Join(receivedItems, " and ") + ".\n")
 	}
 
 	return sb.String(), nil
@@ -631,7 +632,7 @@ func (c *GameLogCmd) exploreAction() (string, error) {
 		return "", nil
 	}
 
-	sb.WriteString(fmt.Sprintf(" begun at a cost of %d platinum and %d draftees\n", platCost, drafteeCost))
+	sb.WriteString(fmt.Sprintf(" begun at a cost of %d platinum and %d draftees.\n", platCost, drafteeCost))
 
 	return sb.String(), nil
 }
@@ -651,7 +652,7 @@ func (c *GameLogCmd) dailyLandAction() (string, error) {
 		return "", err
 	}
 
-	return fmt.Sprintf("You have been awarded with %d %s\n", LandBonus, landType), nil
+	return fmt.Sprintf("You have been awarded with %d %s.\n", LandBonus, landType), nil
 }
 
 func (c *GameLogCmd) destroyBuildingsAction() (string, error) {
@@ -689,7 +690,7 @@ func (c *GameLogCmd) destroyBuildingsAction() (string, error) {
 		return "", nil
 	}
 
-	sb.WriteString(" is complete\n")
+	sb.WriteString(" is complete.\n")
 
 	return sb.String(), nil
 }
@@ -725,7 +726,7 @@ func (c *GameLogCmd) rezoneAction() (string, error) {
 		addedItems++
 	}
 
-	sb.WriteString("\n")
+	sb.WriteString(".\n")
 
 	return sb.String(), nil
 }

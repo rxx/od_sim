@@ -111,6 +111,41 @@ func (c *GameLogCmd) initActions() {
 	}
 }
 
+func (c *GameLogCmd) validateSim() error {
+	//	c.draftRateAction // 90 max, 0 min Military#Z4 to Z76
+    
+	//	c.releaseUnitsAction // release not more than units exists
+    // Military E, F, G, H, I, J, K, L >= 0
+	//	c.castMagicSpells // cast not more than mana available
+    // Production#K15 >= 0
+	//	c.dailtyPlatinumAction
+    // only once in 24 hour range
+    // 4-27, 25-48, 49-23
+	//	c.tradeResources // all traded resources are valid
+    // - 1 lumber = 0.5 platinum
+//- 1 lumber = 0.5 ore
+//- 1 platinum = 0.5 lumber
+//- 1 platinum = 0.5 ore
+
+//- 1 gem = 1 food
+//- 1 gem = 2 ore
+//- 1 gem = 2 lum
+//- 1 gem = 2 platinum
+	//	c.exploreAction // not more than plat, draft available
+    // Pipulation L4-76 >= 0
+    
+	//	c.dailyLandAction // only once in // 4-27, 25-48, 49-23
+		//c.destroyBuildingsAction // no more than available
+    // Construction >= 0
+    // AY to BQ
+	//	c.rezoneAction,
+		c.constructionAction // land available
+    // Construction G to M >= 0
+    // Production H to M >= 0
+	//	c.trainUnitsAction,
+	//	c.improvementsAction,
+}
+
 func (c *GameLogCmd) readConst(cell string) (float64, error) {
 	value, err := c.readFloatValue(Constants, cell, "error reading const")
 	if err != nil {

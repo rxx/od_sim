@@ -1,5 +1,9 @@
 # Log generator for [OpenDominion Game](https://github.com/OpenDominion/OpenDominion)
 
+MOVED THERE => [https://github.com/rxx/od_tools/sim](https://github.com/rxx/od_tools)
+
+------------------------------------------------------------------------------------------
+
 Converted from the script included in sim file from [Yami-10/OD-Simulator](https://github.com/Yami-10/OD-Simulator)
 
 # The idea
